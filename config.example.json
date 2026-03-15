@@ -1,0 +1,6 @@
+{
+    "ODOO_URL": "https://tu-dominio-odoo.com",
+    "ODOO_DB": "tu_base_de_datos",
+    "ODOO_USER": "tu_usuario@correo.com",
+    "ODOO_APIKEY": "TU_API_KEY_AQUI"
+}

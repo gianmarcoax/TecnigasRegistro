@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Catálogo de Productos – Tecnigass</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" />
+    <!-- JsBarcode para generar códigos de barras -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+
+    <style>
+        /* ══ RESET ══════════════════════════════════════════════════ */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        :root {
+            --brand: #1e3a8a;
+            --brand2: #2563eb;
+            --accent: #ea580c;
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-400: #94a3b8;
+            --gray-600: #475569;
+            --gray-800: #1e293b;
+            --r: 8px;
+            --page-w: 210mm;
+        }
+
+        /* ══ SCREEN BASE ════════════════════════════════════════════ */
+        html {
+            background: #6b7280;
+            min-height: 100vh
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #6b7280;
+            color: var(--gray-800);
+            padding: 24px 0 60px;
+        }
+
+        /* ══ FLOATING ACTION BAR ════════════════════════════════════ */
+        .action-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            background: linear-gradient(135deg, #1e3a8a, #2563eb);
+            padding: 10px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, .3);
+        }
+
+        .action-bar h1 {
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 700
+        }
+
+        .action-bar p {
+            color: rgba(255, 255, 255, .7);
+            font-size: .75rem
+        }
+
+        .bar-btns {
+            display: flex;
+            gap: 10px
+        }
+
+        .btn-print {
+            padding: 9px 22px;
+            border: none;
+            border-radius: 8px;
+            font-size: .88rem;
+            font-weight: 700;
+            cursor: pointer;
+            background: #fff;
+            color: var(--brand2);
+            transition: opacity .15s, transform .1s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-print:hover {
+            opacity: .9
+        }
+
+        .btn-print:active {
+            transform: scale(.97)
+        }
+
+        .btn-back {
+            padding: 9px 16px;
+            border: 1px solid rgba(255, 255, 255, .35);
+            border-radius: 8px;
+            font-size: .85rem;
+            font-weight: 600;
+            cursor: pointer;
+            background: transparent;
+            color: #fff;
+            transition: background .15s;
+        }
+
+        .btn-back:hover {
+            background: rgba(255, 255, 255, .1)
+        }
+
+        /* ══ LOADING SCREEN ═════════════════════════════════════════ */
+        #loading {
+            margin-top: 80px;
+            text-align: center;
+            padding: 60px;
+            background: #fff;
+            max-width: 420px;
+            margin-left: auto;
+            margin-right: auto;
+            border-radius: 16px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, .2);
+        }
+
+        .spinner {
+            width: 52px;
+            height: 52px;
+            border: 5px solid #e2e8f0;
+            border-top-color: #2563eb;
+            border-radius: 50%;
+            animation: spin .65s linear infinite;
+            margin: 0 auto 16px
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg)
+            }
+        }
+
+        #loading p {
+            color: var(--gray-600);
+            font-size: .95rem
+        }
+
+        #loading small {
+            color: var(--gray-400);
+            font-size: .8rem
+        }
+
+        /* ══ PAGES WRAPPER ═════════════════════════════════════════ */
+        #pages {
+            margin-top: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px
+        }
+
+        /* ══ PAGE (A4) ════════════════════════════════════════════ */
+        .page {
+            width: var(--page-w);
+            min-height: 297mm;
+            background: #fff;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, .25);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ══ COVER PAGE ══════════════════════════════════════════ */
+        .page-cover {
+            background: linear-gradient(160deg, #1e3a8a 0%, #1d4ed8 50%, #2563eb 100%);
+            min-height: 297mm;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cover-deco {
+            position: absolute;
+            border-radius: 50%;
+            opacity: .06;
+            background: #fff;
+        }
+
+        .cover-deco.d1 {
+            width: 400px;
+            height: 400px;
+            top: -100px;
+            right: -100px
+        }
+
+        .cover-deco.d2 {
+            width: 300px;
+            height: 300px;
+            bottom: -80px;
+            left: -80px
+        }
+
+        .cover-content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            padding: 40px
+        }
+
+        .cover-logo-wrap {
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, .15);
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 52px;
+            margin: 0 auto 28px;
+            border: 2px solid rgba(255, 255, 255, .2);
+        }
+
+        .cover-title {
+            font-size: 2.8rem;
+            font-weight: 900;
+            color: #fff;
+            letter-spacing: -1px;
+            line-height: 1.1;
+            margin-bottom: 12px
+        }
+
+        .cover-sub {
+            font-size: 1rem;
+            color: rgba(255, 255, 255, .75);
+            font-weight: 400;
+            margin-bottom: 40px
+        }
+
+        .cover-divider {
+            width: 60px;
+            height: 4px;
+            background: rgba(255, 255, 255, .4);
+            border-radius: 2px;
+            margin: 0 auto 40px
+        }
+
+        .cover-info {
+            background: rgba(255, 255, 255, .1);
+            border: 1px solid rgba(255, 255, 255, .2);
+            border-radius: 12px;
+            padding: 20px 32px;
+            display: inline-block;
+        }
+
+        .cover-info p {
+            color: rgba(255, 255, 255, .9);
+            font-size: .88rem;
+            margin-bottom: 6px
+        }
+
+        .cover-info p:last-child {
+            margin-bottom: 0
+        }
+
+        .cover-info strong {
+            color: #fff
+        }
+
+        .cover-footer {
+            position: absolute;
+            bottom: 28px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: rgba(255, 255, 255, .45);
+            font-size: .72rem
+        }
+
+        /* ══ PAGE HEADER (for content pages) ════════════════════════ */
+        .page-header {
+            background: linear-gradient(135deg, #1e3a8a, #2563eb);
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .page-header .co-name {
+            color: #fff;
+            font-size: .82rem;
+            font-weight: 700
+        }
+
+        .page-header .page-num {
+            color: rgba(255, 255, 255, .6);
+            font-size: .72rem
+        }
+
+        /* ══ SECTION HEADER ══════════════════════════════════════════ */
+        .section-header {
+            padding: 14px 20px 12px;
+            border-bottom: 2px solid var(--brand);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(to right, #eff6ff, #fff);
+        }
+
+        .section-icon {
+            width: 34px;
+            height: 34px;
+            background: var(--brand2);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .section-name {
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--brand);
+            letter-spacing: -.3px
+        }
+
+        .section-count {
+            margin-left: auto;
+            font-size: .75rem;
+            font-weight: 600;
+            color: var(--gray-400);
+            background: var(--gray-100);
+            padding: 3px 10px;
+            border-radius: 12px;
+        }
+
+        /* ══ PRODUCT GRID ════════════════════════════════════════════ */
+        .prod-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0;
+            flex: 1;
+        }
+
+        /* ══ PRODUCT CARD ════════════════════════════════════════════ */
+        .prod-item {
+            padding: 14px 12px;
+            border-right: 1px solid var(--gray-200);
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+        }
+
+        .prod-item:nth-child(3n) {
+            border-right: none
+        }
+
+        .prod-photo {
+            width: 110px;
+            height: 110px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+            border-radius: 10px;
+            overflow: hidden;
+            flex-shrink: 0;
+            border: 1px solid var(--gray-200);
+        }
+
+        .prod-photo img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain
+        }
+
+        .prod-photo .ph {
+            font-size: 40px;
+            opacity: .3
+        }
+
+        .prod-info {
+            width: 100%;
+            text-align: center
+        }
+
+        .prod-name {
+            font-size: .76rem;
+            font-weight: 700;
+            color: var(--gray-800);
+            line-height: 1.3;
+            margin-bottom: 6px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .prod-ref {
+            font-size: .68rem;
+            font-weight: 600;
+            color: var(--brand2);
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        /* barcode */
+        .barcode-wrap {
+            display: flex;
+            justify-content: center;
+            margin: 6px 0 2px
+        }
+
+        .barcode-wrap svg {
+            max-width: 130px;
+            height: 36px
+        }
+
+        .barcode-num {
+            font-size: .6rem;
+            color: var(--gray-400);
+            letter-spacing: .05em;
+            margin-bottom: 4px
+        }
+
+        /* price */
+        .prod-price-tag {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 3px;
+            background: linear-gradient(135deg, #1e3a8a, #2563eb);
+            color: #fff;
+            border-radius: 20px;
+            padding: 4px 14px;
+            margin-top: 4px;
+        }
+
+        .price-currency {
+            font-size: .65rem;
+            font-weight: 600;
+            opacity: .85
+        }
+
+        .price-value {
+            font-size: .95rem;
+            font-weight: 800
+        }
+
+        /* ══ PAGE FOOTER ══════════════════════════════════════════ */
+        .page-footer {
+            margin-top: auto;
+            padding: 8px 20px;
+            border-top: 1px solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--gray-50);
+        }
+
+        .page-footer small {
+            color: var(--gray-400);
+            font-size: .62rem
+        }
+
+        /* ══ EMPTY STATE ═════════════════════════════════════════== */
+        .no-selection {
+            margin-top: 80px;
+            text-align: center;
+            padding: 60px;
+            background: #fff;
+            max-width: 420px;
+            margin-left: auto;
+            margin-right: auto;
+            border-radius: 16px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, .2);
+        }
+
+        .no-selection .ico {
+            font-size: 48px;
+            display: block;
+            margin-bottom: 12px
+        }
+
+        .no-selection p {
+            color: var(--gray-600);
+            margin-bottom: 16px
+        }
+
+        /* ══ PRINT STYLES ════════════════════════════════════════════ */
+        @media print {
+            html {
+                background: #fff
+            }
+
+            body {
+                background: #fff;
+                padding: 0
+            }
+
+            .action-bar {
+                display: none !important
+            }
+
+            #pages {
+                margin-top: 0;
+                gap: 0
+            }
+
+            .page {
+                width: 100%;
+                min-height: 0;
+                box-shadow: none;
+                border-radius: 0;
+                page-break-after: always;
+                break-after: page;
+            }
+
+            .page:last-child {
+                page-break-after: avoid;
+                break-after: avoid
+            }
+
+            @page {
+                size: A4;
+                margin: 0
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ACTION BAR (oculta al imprimir) -->
+    <div class="action-bar">
+        <div>
+            <h1>📄 Vista previa del Catálogo</h1>
+            <p id="barInfo">…</p>
+        </div>
+        <div class="bar-btns">
+            <button class="btn-back" onclick="history.back()">← Volver</button>
+            <button class="btn-print" onclick="window.print()">🖨 Imprimir / Exportar PDF</button>
+        </div>
+    </div>
+
+    <!-- LOADING -->
+    <div id="loading">
+        <div class="spinner"></div>
+        <p>Generando catálogo…</p>
+        <small>Cargando imágenes y datos desde Odoo</small>
+    </div>
+
+    <!-- RENDERED PAGES -->
+    <div id="pages" style="display:none"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+    <script>
+        const API = '/api';
+        const PRODUCTS_PER_PAGE = 9; // 3 col × 3 rows (puede ajustarse)
+
+        // ── Load selected products from localStorage ──────────────
+        async function buildCatalog() {
+            let selection = [];
+            try {
+                selection = JSON.parse(localStorage.getItem('catalog_selection') || '[]');
+            } catch (e) { }
+
+            if (selection.length === 0) {
+                showNoSelection();
+                return;
+            }
+
+            const ids = selection.map(p => p.id).join(',');
+            document.getElementById('barInfo').textContent = `Cargando ${selection.length} producto(s)…`;
+
+            try {
+                const r = await fetch(`${API}?action=products_by_ids&ids=${ids}`);
+                const d = await r.json();
+                if (d.error) throw new Error(d.error);
+                render(d.products || []);
+            } catch (e) {
+                document.getElementById('loading').innerHTML = `
+      <span style="font-size:44px">⚠️</span>
+      <p style="color:#dc2626;margin-top:12px">${e.message}</p>
+      <button onclick="history.back()" style="margin-top:16px;padding:10px 24px;border:none;border-radius:8px;background:#2563eb;color:#fff;cursor:pointer;font-weight:600">← Volver</button>`;
+            }
+        }
+
+        // ── Main render ────────────────────────────────────────────
+        function render(products) {
+            // Group by category
+            const groups = {};
+            products.forEach(p => {
+                const cat = Array.isArray(p.categ_id) ? p.categ_id[1] : 'Sin categoría';
+                const catId = Array.isArray(p.categ_id) ? p.categ_id[0] : 0;
+                if (!groups[cat]) groups[cat] = { id: catId, name: cat, items: [] };
+                groups[cat].items.push(p);
+            });
+
+            const sortedGroups = Object.values(groups).sort((a, b) => a.name.localeCompare(b.name));
+            const pages = document.getElementById('pages');
+            pages.innerHTML = '';
+
+            // ── Cover page ──
+            const today = new Date().toLocaleDateString('es-PE', { year: 'numeric', month: 'long', day: 'numeric' });
+            const cover = document.createElement('div');
+            cover.className = 'page page-cover';
+            cover.innerHTML = `
+    <div class="cover-deco d1"></div>
+    <div class="cover-deco d2"></div>
+    <div class="cover-content">
+      <div class="cover-logo-wrap">🔥</div>
+      <div class="cover-title">Tecnigass</div>
+      <div class="cover-sub">Catálogo de Productos</div>
+      <div class="cover-divider"></div>
+      <div class="cover-info">
+        <p>📦 <strong>${products.length}</strong> productos en <strong>${sortedGroups.length}</strong> categoría(s)</p>
+        <p>📅 Generado el <strong>${today}</strong></p>
+        <p>🏷 Precios incluyen IGV</p>
+      </div>
+    </div>
+    <div class="cover-footer">TECNIGASS S.A.C. · tecnigass.pe · Catálogo de uso interno</div>`;
+            pages.appendChild(cover);
+
+            // ── Content pages ──
+            let pageNum = 1;
+
+            sortedGroups.forEach(group => {
+                const chunks = chunkArray(group.items, PRODUCTS_PER_PAGE);
+
+                chunks.forEach((chunk, ci) => {
+                    pageNum++;
+                    const page = document.createElement('div');
+                    page.className = 'page';
+
+                    // Page header
+                    page.innerHTML = `
+        <div class="page-header">
+          <span class="co-name">🔥 TECNIGASS</span>
+          <span class="page-num">Pág. ${pageNum}</span>
+        </div>
+        <div class="section-header">
+          <div class="section-icon">📂</div>
+          <div>
+            <div class="section-name">${group.name}</div>
+          </div>
+          <div class="section-count">${ci === 0 ? group.items.length + ' producto(s)' : ''}</div>
+        </div>
+        <div class="prod-grid" id="pg-${pageNum}"></div>
+        <div class="page-footer">
+          <small>Tecnigass S.A.C. – tecnigass.pe</small>
+          <small>Precios en soles (S/) · Sujetos a cambio sin previo aviso</small>
+        </div>`;
+
+                    pages.appendChild(page);
+
+                    // Render products
+                    const grid = page.querySelector(`#pg-${pageNum}`);
+                    chunk.forEach(p => {
+                        const item = document.createElement('div');
+                        item.className = 'prod-item';
+
+                        const imgSrc = p.image_1920
+                            ? `data:image/png;base64,${p.image_1920}`
+                            : null;
+
+                        const price = parseFloat(p.list_price || 0).toFixed(2);
+                        const ref = p.default_code || '—';
+                        const bc = p.barcode || '';
+
+                        item.innerHTML = `
+          <div class="prod-photo">
+            ${imgSrc ? `<img src="${imgSrc}" alt="${p.name}" />` : '<span class="ph">📦</span>'}
+          </div>
+          <div class="prod-info">
+            <div class="prod-name">${p.name}</div>
+            <div class="prod-ref">Ref: ${ref}</div>
+            ${bc ? `
+              <div class="barcode-wrap"><svg class="bc-svg" data-barcode="${bc}"></svg></div>
+              <div class="barcode-num">${bc}</div>
+            ` : ''}
+            <div class="prod-price-tag">
+              <span class="price-currency">S/</span>
+              <span class="price-value">${price}</span>
+            </div>
+          </div>`;
+
+                        grid.appendChild(item);
+                    });
+                });
+            });
+
+            // ── Render barcodes ──
+            document.querySelectorAll('.bc-svg').forEach(svg => {
+                const code = svg.dataset.barcode;
+                try {
+                    JsBarcode(svg, code, {
+                        format: 'CODE128',
+                        displayValue: false,
+                        width: 1.4,
+                        height: 36,
+                        margin: 0,
+                    });
+                } catch (e) {
+                    svg.style.display = 'none';
+                }
+            });
+
+            // Show pages, hide loading
+            document.getElementById('loading').style.display = 'none';
+            pages.style.display = 'flex';
+
+            document.getElementById('barInfo').textContent =
+                `${products.length} producto(s) en ${sortedGroups.length} categoría(s) · ${pageNum} página(s)`;
+        }
+
+        function showNoSelection() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('pages').style.display = 'flex';
+            document.getElementById('pages').innerHTML = `
+    <div class="no-selection">
+      <span class="ico">📋</span>
+      <p>No hay productos seleccionados.<br>Vuelve al selector y elige los productos.</p>
+      <button onclick="history.back()" style="padding:11px 28px;border:none;border-radius:8px;background:#2563eb;color:#fff;cursor:pointer;font-weight:700;font-size:.92rem">← Volver al Selector</button>
+    </div>`;
+        }
+
+        // ── Utilities ──────────────────────────────────────────────
+        function chunkArray(arr, n) {
+            const result = [];
+            for (let i = 0; i < arr.length; i += n) result.push(arr.slice(i, i + n));
+            return result;
+        }
+
+        // ── Init ──────────────────────────────────────────────────
+        buildCatalog();
+    </script>
+</body>
+
+</html>
