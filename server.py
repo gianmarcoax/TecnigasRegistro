@@ -130,6 +130,12 @@ class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
 
+        if parsed.path == '/':
+            self.send_response(301)
+            self.send_header('Location', '/dashboard.html')
+            self.end_headers()
+            return
+
         if parsed.path == '/api':
             params = dict(urllib.parse.parse_qsl(parsed.query))
             action = params.get('action', 'search')
