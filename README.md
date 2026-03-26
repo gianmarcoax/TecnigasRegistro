@@ -37,7 +37,7 @@ Por seguridad, las credenciales no están quemadas en el código. Para usar el p
      "ODOO_URL": "https://tecnigass.pe",
      "ODOO_DB": "db_tecnigas",
      "ODOO_USER": "coadmin@gmail.com",
-     "ODOO_APIKEY": "TU_API_KEY"
+     "ODOO_APIKEY": "0ae62c7a79728cccb1196a00f738565c931a2435"
    }
    ```
 > **Nota de Seguridad**: El archivo `config.json` se encuentra ignorado en el archivo `.gitignore`, por lo que de forma predeterminada no será subido a tu repositorio.

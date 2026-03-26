@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>Recepción de Productos – Tecnigass</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"/>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          colors: {
+            primario: 'var(--color-primario)',
+            fondo: 'var(--color-fondo)',
+            superficie: 'var(--color-superficie)',
+            texto: 'var(--color-texto)',
+            borde: 'var(--color-borde)'
+          },
+          boxShadow: {
+            card: 'var(--sombra-card)',
+            elevada: 'var(--sombra-elevada)'
+          },
+          borderRadius: {
+            xl: 'var(--radio)'
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    /* VARIABLES (Light/Dark) */
+    :root {
+      --color-primario: #2563eb;
+      --color-fondo: #f0f4f8;
+      --color-superficie: #ffffff;
+      --color-texto: #0f172a;
+      --color-borde: #e2e8f0;
+      --radio: 12px;
+      --sombra-card: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+      --sombra-elevada: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+    }
+    html.dark {
+      --color-primario: #3b82f6;
+      --color-fondo: #0f172a;
+      --color-superficie: #1e293b;
+      --color-texto: #f1f5f9;
+      --color-borde: #334155;
+      --sombra-card: 0 4px 6px -1px rgba(0,0,0,0.3);
+      --sombra-elevada: 0 20px 25px -5px rgba(0,0,0,0.5);
+    }
+
+    body {
+      background-color: var(--color-fondo);
+      color: var(--color-texto);
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* GLASS HEADER */
+    .glass-header {
+      background: rgba(var(--color-superficie-rgb, 255,255,255), 0.7);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--color-borde);
+    }
+    html.dark .glass-header {
+      background: rgba(30, 41, 59, 0.7);
+    }
+
+    /* SCROLLBAR */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--color-borde); border-radius: 6px; }
+
+    /* ANIMATIONS */
+    @keyframes fadeInSlideUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animar-entrada { animation: fadeInSlideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-4px); }
+      75% { transform: translateX(4px); }
+    }
+    .animar-shake { animation: shake 0.3s ease-in-out; }
+
+    @keyframes pulseSuccess {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); background-color: var(--color-primario); color: white; }
+      100% { transform: scale(1); }
+    }
+    .animar-pulso { animation: pulseSuccess 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+
+    /* UTILS */
+    .btn-trans { transition: all 200ms cubic-bezier(.4, 0, .2, 1); }
+    
+    /* INPUT SELECTS */
+    input, select {
+      background-color: var(--color-superficie);
+      color: var(--color-texto);
+      border-color: var(--color-borde);
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--color-primario);
+      box-shadow: 0 0 0 2px rgba(37,99,235,0.2);
+    }
+    html.dark input, html.dark select {
+      border-color: var(--color-borde);
+      background-color: #0f172a;
+    }
+  </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden font-sans">
+
+<!-- HEADER -->
+<header class="glass-header px-5 py-3 flex items-center justify-between shrink-0 z-20 relative">
+  <div class="flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl bg-primario text-white flex items-center justify-center shadow-elevada">
+      <i data-lucide="package-open" stroke-width="2.5"></i>
+    </div>
+    <div>
+      <h1 class="text-lg font-bold tracking-tight text-texto leading-tight">Tecnigass Recepción</h1>
+      <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Odoo ERP · BarTender</p>
+    </div>
+  </div>
+
+  <div class="hidden md:flex items-center gap-3 bg-superficie px-3 py-1.5 rounded-full border border-borde shadow-sm">
+    <i data-lucide="map-pin" class="w-4 h-4 text-gray-500"></i>
+    <select id="locationSelect" class="bg-transparent text-sm font-bold text-texto border-none outline-none appearance-none pr-6 cursor-pointer" style="background-image:url('data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><polyline points=\'6 9 12 15 18 9\'></polyline></svg>'); background-position: right center; background-repeat: no-repeat;">
+      <option value="">Cargando ubicaciones...</option>
+    </select>
+  </div>
+
+  <div class="flex items-center gap-2">
+    <!-- Dark Mode Toggle -->
+    <button id="btnDarkMode" class="p-2 rounded-xl text-gray-500 hover:bg-borde hover:text-texto btn-trans">
+      <i data-lucide="moon" class="w-5 h-5"></i>
+    </button>
+    <div class="hidden sm:flex items-center gap-2 bg-primario/10 text-primario px-4 py-1.5 rounded-full text-sm font-semibold">
+      <i data-lucide="list" class="w-4 h-4"></i>
+      <span id="totalCount" class="bg-primario text-white px-2 py-0.5 rounded-lg text-xs font-bold">0</span>
+    </div>
+  </div>
+</header>
+
+<div class="flex flex-1 overflow-hidden flex-col md:flex-row">
+
+  <!-- LEFT PANEL: BUSQUEDA -->
+  <section class="flex-1 flex flex-col overflow-hidden border-b md:border-b-0 md:border-r border-borde z-10">
+    <div class="p-4 bg-superficie/50 backdrop-blur-md border-b border-borde shrink-0 space-y-3">
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="relative flex-1 min-w-[200px]">
+          <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
+          <input id="searchInput" type="text" class="w-full pl-9 pr-3 py-2 rounded-xl border-2 text-sm font-medium btn-trans" placeholder="Buscar por código o descripción..." autocomplete="off">
+        </div>
+        <div class="relative flex-1 max-w-[250px] min-w-[160px]">
+          <i data-lucide="folder" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
+          <input id="categInput" list="categList" class="w-full pl-9 pr-3 py-2 rounded-xl border-2 text-sm font-medium btn-trans bg-superficie" placeholder="Buscar categoría..." autocomplete="off">
+          <datalist id="categList"></datalist>
+        </div>
+        <button id="btnSearch" class="flex items-center gap-2 bg-primario text-white hover:bg-blue-700 px-5 py-2.5 rounded-xl font-bold text-sm shadow-card btn-trans">
+          <i data-lucide="search" class="w-4 h-4"></i> Buscar
+        </button>
+        <button id="btnRefresh" class="p-2.5 rounded-xl bg-superficie text-gray-600 hover:text-primario border border-borde shadow-sm btn-trans" title="Sincronizar con Odoo">
+          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+        </button>
+        <button id="btnClear" class="p-2.5 rounded-xl bg-superficie text-gray-500 hover:text-red-500 border border-borde shadow-sm btn-trans" title="Limpiar formulario">
+          <i data-lucide="eraser" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div id="resultsMeta" class="text-xs font-semibold text-gray-500 px-1 h-4"></div>
+    </div>
+    
+    <div class="flex-1 overflow-y-auto p-4 md:p-5" id="resultsArea">
+      <!-- Empty State -->
+      <div class="flex flex-col items-center justify-center h-full text-gray-400 animar-entrada">
+        <i data-lucide="package-search" class="w-16 h-16 opacity-50 mb-3 text-borde"></i>
+        <p class="font-semibold text-texto opacity-70">Busca un producto para empezar</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- RIGHT PANEL: CARRITO -->
+  <aside class="w-full md:w-[380px] shrink-0 flex flex-col bg-superficie/90 backdrop-blur-xl border-t md:border-t-0 shadow-[-4px_0_24px_rgba(0,0,0,0.02)] relative z-20">
+    <!-- En móvil, select de ubicación encima del carrito -->
+    <div class="md:hidden p-3 border-b border-borde bg-superficie flex items-center gap-2">
+      <i data-lucide="map-pin" class="w-4 h-4 text-gray-500"></i>
+      <select id="mobileLocationSelect" class="bg-transparent text-sm font-bold text-texto border-none outline-none appearance-none flex-1">
+        <option value="">Ubicación...</option>
+      </select>
+    </div>
+
+    <div class="p-4 border-b border-borde flex items-center justify-between bg-superficie shrink-0">
+      <div class="flex items-center gap-2 font-bold text-texto">
+        <i data-lucide="clipboard-list" class="w-5 h-5 text-primario"></i>
+        Lista de Recepción
+      </div>
+      <span id="cartCount" class="bg-fondo text-gray-500 px-3 py-1 rounded-full text-xs font-bold">0 líneas</span>
+    </div>
+    
+    <div class="flex-1 overflow-y-auto p-3 space-y-3" id="cartList" style="max-height: 45vh; md:max-height: none">
+      <!-- Empty Cart -->
+      <div class="flex flex-col items-center justify-center text-gray-400 py-10 animar-entrada">
+        <i data-lucide="shopping-cart" class="w-12 h-12 opacity-30 mb-2"></i>
+        <p class="text-sm font-medium">Lista vacía</p>
+      </div>
+    </div>
+
+    <div class="p-4 bg-superficie border-t border-borde flex flex-col gap-3 shrink-0">
+      <button id="btnReceiveOdoo" disabled class="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl text-sm font-bold text-white bg-primario hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-primario shadow-elevada btn-trans">
+        <i data-lucide="warehouse" class="w-5 h-5"></i> Recepcionar en Odoo
+      </button>
+      <button id="btnPrintExcel" disabled class="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl text-sm font-bold text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:hover:bg-green-600 shadow-elevada btn-trans">
+        <i data-lucide="printer" class="w-5 h-5"></i> Exportar Etiquetas
+      </button>
+      <button id="btnClearAll" class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-xs font-bold text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 btn-trans">
+        <i data-lucide="trash-2" class="w-4 h-4"></i> Vaciar Lista
+      </button>
+    </div>
+  </aside>
+
+</div>
+
+<!-- MODALS OVERLAY -->
+<div id="modalOverlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden items-center justify-center opacity-0 transition-opacity duration-200 p-4">
+  
+  <!-- MODAL SIMPLE -->
+  <div id="modalSimple" class="hidden w-full max-w-md bg-superficie rounded-[var(--radio)] shadow-elevada overflow-hidden border border-borde transform scale-95 transition-transform duration-200">
+    <div class="p-5 border-b border-borde bg-fondo/50 flex items-start justify-between">
+      <div>
+        <h3 id="modalSimpleTitle" class="font-bold text-texto text-lg leading-tight">Producto</h3>
+        <p id="modalSimpleSub" class="text-xs font-medium text-gray-500 mt-1"></p>
+      </div>
+      <button class="modal-close text-gray-400 hover:text-texto p-1.5 rounded-lg hover:bg-borde btn-trans">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <div class="p-5 space-y-4">
+      <div>
+        <label class="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">
+          <i data-lucide="package-plus" class="w-4 h-4"></i> Cant. Odoo
+        </label>
+        <input id="simpleQty" type="number" min="1" value="1" class="w-full p-3 rounded-xl border-2 text-center font-bold text-lg btn-trans">
+      </div>
+      <div>
+        <label class="flex items-center gap-2 text-xs font-bold text-orange-500 uppercase tracking-widest mb-2">
+          <i data-lucide="tag" class="w-4 h-4"></i> Tickets BarTender
+        </label>
+        <input id="simpleTickets" type="number" min="0" value="1" class="w-full p-3 rounded-xl border-2 border-orange-200 dark:border-orange-900/50 bg-orange-50 dark:bg-orange-900/20 text-orange-600 text-center font-bold text-lg btn-trans">
+      </div>
+    </div>
+    <div class="p-4 border-t border-borde bg-fondo/50 flex justify-end gap-3">
+      <button class="modal-close px-5 py-2 rounded-xl text-sm font-bold text-gray-600 hover:bg-borde btn-trans">Cancelar</button>
+      <button id="btnSimpleConfirm" class="flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-bold text-white bg-primario hover:bg-blue-700 shadow-card btn-trans">
+        <i data-lucide="check" class="w-4 h-4"></i> Añadir
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL KIT -->
+  <div id="modalKit" class="hidden w-full max-w-2xl bg-superficie rounded-[var(--radio)] shadow-elevada overflow-hidden border border-borde transform scale-95 transition-transform duration-200 flex flex-col max-h-[90vh]">
+    <div class="p-5 border-b border-borde bg-fondo/50 flex items-start justify-between shrink-0">
+      <div>
+        <h3 id="modalKitTitle" class="font-bold text-texto text-lg flex items-center gap-2">
+          <i data-lucide="blocks" class="w-5 h-5 text-purple-500"></i> Kit
+        </h3>
+        <p class="text-xs font-medium text-gray-500 mt-1">Ajusta los componentes internos a recepcionar.</p>
+      </div>
+      <button class="modal-close text-gray-400 hover:text-texto p-1.5 rounded-lg hover:bg-borde btn-trans">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <div class="p-5 overflow-y-auto flex-1 font-sans">
+      <div id="kitComponentsArea">
+        <div class="flex flex-col items-center justify-center p-10 text-gray-400">
+          <i data-lucide="loader-2" class="w-8 h-8 animate-spin text-primario mb-3"></i>
+          <p class="text-sm font-medium">Cargando definición...</p>
+        </div>
+      </div>
+    </div>
+    <div class="p-4 border-t border-borde bg-fondo/50 flex justify-end gap-3 shrink-0">
+      <button class="modal-close px-5 py-2 rounded-xl text-sm font-bold text-gray-600 hover:bg-borde btn-trans">Cancelar</button>
+      <button id="btnKitConfirm" class="flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-bold text-white bg-purple-600 hover:bg-purple-700 shadow-card btn-trans">
+        <i data-lucide="check" class="w-4 h-4"></i> Confirmar Componentes
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- TOASTS -->
+<div id="toastContainer" class="fixed bottom-6 left-1/2 -translate-x-1/2 flex flex-col gap-3 z-[100] pointer-events-none"></div>
+
+<script>
+// --- CORE CONFIG & STATE ---
+const API = '/api';
+let receptionRows = []; 
+let _currentProducts = []; 
+let _stockCache = {};  
+let _locAlmId = null, _locTieId = null; 
+let _catMap = {};
+
+// --- INITIALIZE THEME ---
+function initTheme() {
+  const isDark = localStorage.getItem('theme') === 'dark';
+  if (isDark) document.documentElement.classList.add('dark');
+  document.getElementById('btnDarkMode').addEventListener('click', () => {
+    document.documentElement.classList.toggle('dark');
+    localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+  });
+}
+
+// --- BOOTSTRAP ---
+document.addEventListener('DOMContentLoaded', () => {
+  initTheme();
+  lucide.createIcons();
+  
+  loadLocations();
+  loadCategories();
+  loadCart();
+
+  // Mobile locations sync
+  document.getElementById('locationSelect').addEventListener('change', (e) => {
+    document.getElementById('mobileLocationSelect').value = e.target.value;
+    saveCart();
+  });
+  document.getElementById('mobileLocationSelect').addEventListener('change', (e) => {
+    document.getElementById('locationSelect').value = e.target.value;
+    saveCart();
+  });
+});
+
+// --- API FETCHERS ---
+async function loadLocations() {
+  try {
+    const r = await fetch(`${API}?action=locations`);
+    const d = await r.json();
+    const sel = document.getElementById('locationSelect');
+    const msel = document.getElementById('mobileLocationSelect');
+    const savedLoc = sel.dataset.savedLoc || '';
+    
+    sel.innerHTML = '<option value="">— Destino —</option>';
+    msel.innerHTML = '<option value="">— Destino —</option>';
+    
+    (d.locations || []).forEach(loc => {
+      const opt = document.createElement('option');
+      opt.value = loc.id;
+      opt.textContent = (loc.complete_name || '').replace('PUN/', '');
+      const mopt = opt.cloneNode(true);
+      
+      if (savedLoc && loc.id == savedLoc) {
+        opt.selected = true; mopt.selected = true;
+      } else if (!savedLoc && (loc.complete_name||'').toUpperCase().includes('ALMACEN')) {
+        opt.selected = true; mopt.selected = true;
+        _locAlmId = loc.id;
+      }
+      if ((loc.complete_name||'').toUpperCase().includes('TIENDA')) _locTieId = loc.id;
+      
+      sel.appendChild(opt);
+      msel.appendChild(mopt);
+    });
+  } catch(e) { }
+}
+
+async function loadCategories() {
+  try {
+    const r = await fetch(`${API}?action=categories`);
+    const d = await r.json();
+    const dl = document.getElementById('categList');
+    dl.innerHTML = '';
+    (d.categories || []).forEach(c => {
+      _catMap[c.complete_name] = c.id;
+      const opt = document.createElement('option');
+      opt.value = c.complete_name;
+      dl.appendChild(opt);
+    });
+  } catch(e) {}
+}
+
+async function doSearch() {
+  const q = document.getElementById('searchInput').value.trim();
+  const catName = document.getElementById('categInput').value.trim();
+  const cat = _catMap[catName] || '';
+  const area = document.getElementById('resultsArea');
+  const meta = document.getElementById('resultsMeta');
+
+  if (!q && !catName) { 
+    area.innerHTML = `
+      <div class="flex flex-col items-center justify-center h-full text-gray-400 animar-entrada">
+        <i data-lucide="package-search" class="w-16 h-16 opacity-50 mb-3 text-borde"></i>
+        <p class="font-semibold text-texto opacity-70">Ingresa búsqueda para empezar</p>
+      </div>`;
+    lucide.createIcons();
+    return; 
+  }
+
+  area.innerHTML = `<div class="flex flex-col items-center justify-center p-14"><i data-lucide="loader-2" class="w-8 h-8 animate-spin text-primario mb-2"></i><span class="text-sm font-bold text-gray-500">Conectando...</span></div>`;
+  lucide.createIcons();
+  meta.textContent = 'Buscando...';
+
+  try {
+    const r = await fetch(`${API}?action=search&q=${encodeURIComponent(q)}&categ=${cat}`);
+    const d = await r.json();
+    if (d.error) {
+      area.innerHTML = `<div class="text-center p-10 text-red-500 font-bold"><i data-lucide="alert-triangle" class="w-10 h-10 mx-auto mb-2"></i>${d.error}</div>`;
+      meta.textContent = '';
+      lucide.createIcons();
+      document.getElementById('searchInput').classList.add('animar-shake');
+      setTimeout(()=>document.getElementById('searchInput').classList.remove('animar-shake'), 300);
+      return;
+    }
+    const prods = d.products || [];
+    meta.textContent = `${prods.length} resultado(s)`;
+    _currentProducts = prods;
+    renderGrid(prods);
+    loadStockForProducts(prods);
+  } catch(e) { 
+    area.innerHTML = `<div class="text-center p-10 text-red-500"><i data-lucide="wifi-off" class="w-10 h-10 mx-auto mb-2"></i>Error de red</div>`;
+    if(lucide) lucide.createIcons();
+  }
+}
+
+// --- RENDER GRID ---
+function renderGrid(products) {
+  const area = document.getElementById('resultsArea');
+  if (!products.length) {
+    area.innerHTML = `<div class="flex flex-col items-center justify-center p-14 text-gray-400 animar-entrada"><i data-lucide="search-x" class="w-12 h-12 mb-2 opacity-50"></i><p class="font-bold">Sin resultados</p></div>`;
+    lucide.createIcons();
+    return;
+  }
+
+  const html = products.map(p => {
+    const code = p.default_code || 'N/A';
+    const price = `S/ ${parseFloat(p.list_price||0).toFixed(2)}`;
+    const img = p.image_128 
+      ? `<img src="data:image/png;base64,${p.image_128}" class="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal transition-transform hover:scale-105 duration-300"/>`
+      : `<i data-lucide="image" class="w-12 h-12 text-borde"></i>`;
+    const isKit = p.is_kit;
+    
+    const s = _stockCache[String(p.id)] || {};
+    const almQty = s.alm !== undefined ? parseFloat(s.alm).toFixed(0) : '—';
+    const tieQty = s.tie !== undefined ? parseFloat(s.tie).toFixed(0) : '—';
+
+    return `
+    <div class="bg-superficie rounded-xl border border-borde shadow-card hover:shadow-elevada hover:-translate-y-1 overflow-hidden flex flex-col cursor-pointer btn-trans animar-entrada relative" onclick="openReceiveModal(${p.id})" id="card-${p.id}">
+      ${isKit ? `<div class="absolute top-2 left-2 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 text-[10px] font-black uppercase px-2 py-1 rounded-lg border border-purple-200 dark:border-purple-800 shadow-sm flex items-center gap-1"><i data-lucide="blocks" class="w-3 h-3"></i> KIT</div>` : ''}
+      <div class="h-32 bg-white dark:bg-slate-800 p-2 flex items-center justify-center relative">
+        <div class="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/5 to-transparent pointer-events-none"></div>
+        ${img}
+      </div>
+      <div class="p-3 flex-1 flex flex-col">
+        <div class="text-[10px] font-black text-primario tracking-widest uppercase mb-1">${code}</div>
+        <div class="text-xs font-bold text-texto leading-snug flex-1">${esc(p.name)}</div>
+        <div class="flex gap-2 mt-2" class="prod-stock-row">
+          <span class="stock-chip alm flex items-center gap-1 text-[10px] font-bold bg-cyan-50 dark:bg-cyan-900/20 text-cyan-700 dark:text-cyan-300 px-1.5 py-0.5 rounded-md border border-cyan-100 dark:border-cyan-800"><i data-lucide="warehouse" class="w-3 h-3"></i> ${almQty}</span>
+          <span class="stock-chip tie flex items-center gap-1 text-[10px] font-bold bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded-md border border-indigo-100 dark:border-indigo-800"><i data-lucide="store" class="w-3 h-3"></i> ${tieQty}</span>
+        </div>
+      </div>
+      <div class="p-3 bg-fondo/50 border-t border-borde flex items-center justify-between">
+        <span class="font-bold text-sm">${price}</span>
+        <button class="bg-blue-100 hover:bg-primario text-blue-700 hover:text-white dark:bg-blue-900/30 dark:text-blue-300 text-xs font-bold py-1.5 px-3 rounded-full btn-trans flex items-center gap-1">
+          <i data-lucide="plus" class="w-3 h-3"></i> ${isKit ? 'Detalles' : 'Añadir'}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+  
+  area.innerHTML = `<div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">${html}</div>`;
+  lucide.createIcons();
+}
+
+async function loadStockForProducts(prods) {
+  if (!prods.length) return;
+  const ids = prods.map(p => p.id).join(',');
+  const locs = [];
+  if (_locAlmId) locs.push({id: _locAlmId, key:'alm'});
+  if (_locTieId) locs.push({id: _locTieId, key:'tie'});
+  if (!locs.length) return;
+
+  for (const loc of locs) {
+    try {
+      const r = await fetch(`${API}?action=stock_by_location&loc_id=${loc.id}&tmpl_ids=${ids}`);
+      const d = await r.json();
+      Object.entries(d.stock || {}).forEach(([tmplId, qty]) => {
+        const key = String(tmplId);
+        if (!_stockCache[key]) _stockCache[key] = {};
+        _stockCache[key][loc.key] = qty;
+      });
+    } catch(e) {}
+  }
+  prods.forEach(p => updateStockChips(p.id));
+}
+
+function updateStockChips(tmplId) {
+  const card = document.getElementById(`card-${tmplId}`);
+  if (!card) return;
+  const row = card.querySelector('.prod-stock-row');
+  if (!row) return;
+  const s = _stockCache[String(tmplId)] || {};
+  const almQty = s.alm !== undefined ? parseFloat(s.alm).toFixed(0) : '—';
+  const tieQty = s.tie !== undefined ? parseFloat(s.tie).toFixed(0) : '—';
+  
+  const spanAlm = card.querySelector('.stock-chip.alm');
+  if (spanAlm) spanAlm.innerHTML = `<i data-lucide="warehouse" class="w-3 h-3"></i> ${almQty}`;
+  const spanTie = card.querySelector('.stock-chip.tie');
+  if (spanTie) spanTie.innerHTML = `<i data-lucide="store" class="w-3 h-3"></i> ${tieQty}`;
+  
+  lucide.createIcons({ root: row });
+}
+
+// --- LOCAL STORAGE CRUD ---
+function saveCart() {
+  localStorage.setItem('tecnigass_reception', JSON.stringify({
+    rows: receptionRows,
+    loc: document.getElementById('locationSelect').value || ''
+  }));
+}
+
+function loadCart() {
+  try {
+    const raw = localStorage.getItem('tecnigass_reception');
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (data && Array.isArray(data.rows)) {
+      receptionRows = data.rows;
+      if (data.loc) document.getElementById('locationSelect').dataset.savedLoc = data.loc;
+      renderCart();
+    }
+  } catch(e){}
+}
+
+function addRow(row) { 
+  receptionRows.push(row); 
+  renderCart(); 
+}
+
+function removeRow(uid) {
+  const e=event; if(e) e.stopPropagation();
+  receptionRows = receptionRows.filter(r=>r.uid!==uid); 
+  renderCart(); 
+}
+
+function renderCart() {
+  const count = receptionRows.length;
+  document.getElementById('totalCount').textContent = count;
+  document.getElementById('cartCount').textContent = `${count} ítem(s)`;
+  const dis = count === 0;
+  document.getElementById('btnReceiveOdoo').disabled = dis;
+  document.getElementById('btnPrintExcel').disabled  = dis;
+
+  saveCart();
+
+  const list = document.getElementById('cartList');
+  if (!count) {
+    list.innerHTML = `
+      <div class="flex flex-col items-center justify-center text-gray-400 py-10 animar-entrada">
+        <div class="p-4 bg-fondo rounded-full mb-3"><i data-lucide="shopping-cart" class="w-8 h-8 opacity-50 text-borde"></i></div>
+        <p class="text-sm font-bold text-texto opacity-70">Carrito Vacío</p>
+      </div>`;
+    lucide.createIcons();
+    return;
+  }
+
+  list.innerHTML = receptionRows.map(r => `
+<div class="bg-superficie rounded-xl border border-borde shadow-sm mb-3 overflow-hidden animar-entrada relative ${r.is_kit_comp?'border-l-4 border-l-purple-500':'border-l-4 border-l-primario'} group" id="row-${r.uid}">
+  <div class="p-3 flex items-start gap-2">
+    <div class="flex-1 min-w-0">
+      <div class="text-xs font-bold text-texto truncate" title="${esc(r.name)}">${esc(r.name)}</div>
+      <div class="text-[10px] font-medium text-gray-400 mt-1">${r.default_code||'S/N'} ${r.is_kit_comp?`<span class="text-purple-600 dark:text-purple-400 font-bold ml-1 flex inline-flex items-center gap-1"><i data-lucide="blocks" class="w-3 h-3"></i> ${esc(r.parent_name||'')}</span>`:''}</div>
+    </div>
+    <button class="text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded-lg btn-trans shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity" onclick="removeRow('${r.uid}')" title="Remover">
+      <i data-lucide="trash-2" class="w-4 h-4"></i>
+    </button>
+  </div>
+  <div class="bg-fondo/50 border-t border-borde px-3 py-2 grid grid-cols-2 gap-3">
+    <div>
+      <label class="flex items-center gap-1 text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1"><i data-lucide="package-plus" class="w-3 h-3"></i> Odoo</label>
+      <input type="number" min="1" value="${r.qty}" onchange="updateRow('${r.uid}','qty',this.value)" class="w-full bg-superficie border border-borde rounded-lg px-2 py-1.5 text-xs font-bold text-center btn-trans focus:border-primario focus:ring-1 focus:ring-primario outline-none"/>
+    </div>
+    <div>
+      <label class="flex items-center gap-1 text-[9px] font-bold text-orange-500 uppercase tracking-widest mb-1"><i data-lucide="tag" class="w-3 h-3"></i> TCKT</label>
+      <input type="number" min="0" value="${r.tickets}" onchange="updateRow('${r.uid}','tickets',this.value)" class="w-full bg-orange-50 dark:bg-orange-900/20 text-orange-600 border border-orange-200 dark:border-orange-900/50 rounded-lg px-2 py-1.5 text-xs font-bold text-center btn-trans focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none"/>
+    </div>
+  </div>
+</div>`).join('');
+  lucide.createIcons();
+}
+
+function updateRow(uid, field, val) {
+  const row = receptionRows.find(r=>r.uid===uid);
+  if (row) {
+    row[field] = parseInt(val)||0;
+    saveCart();
+    // Añadimos el pulso al renglón
+    const rowEl = document.getElementById(`row-${uid}`);
+    if (rowEl) {
+      rowEl.classList.remove('animar-pulso');
+      void rowEl.offsetWidth; // trigger reflow
+      rowEl.classList.add('animar-pulso');
+    }
+  }
+}
+
+// --- MODALS ---
+function openModal(id) {
+  const over = document.getElementById('modalOverlay');
+  const modal = document.getElementById(id);
+  over.classList.remove('hidden');
+  over.classList.add('flex');
+  modal.classList.remove('hidden');
+  // Trigger animation frame for opacity/scale transition
+  requestAnimationFrame(() => {
+    over.classList.remove('opacity-0');
+    modal.classList.remove('scale-95');
+  });
+}
+
+function closeModal() {
+  const over = document.getElementById('modalOverlay');
+  over.classList.add('opacity-0');
+  document.querySelectorAll('#modalOverlay > div').forEach(m => m.classList.add('scale-95'));
+  setTimeout(() => {
+    over.classList.add('hidden');
+    over.classList.remove('flex');
+    document.querySelectorAll('#modalOverlay > div').forEach(m => m.classList.add('hidden'));
+  }, 200);
+}
+
+document.querySelectorAll('.modal-close').forEach(btn => btn.addEventListener('click', closeModal));
+document.getElementById('modalOverlay').addEventListener('mousedown', e => { if(e.target.id === 'modalOverlay') closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+function openReceiveModal(tmplId) {
+  const prod = _currentProducts.find(p => p.id === tmplId);
+  if (!prod) return;
+  if (prod.is_kit) openKitModal(prod);
+  else openSimpleModal(prod);
+}
+
+function openSimpleModal(prod) {
+  document.getElementById('modalSimpleTitle').textContent = prod.name;
+  document.getElementById('modalSimpleSub').textContent = `Ref: ${prod.default_code||'N/A'} · ${parseFloat(prod.list_price||0).toFixed(2)} S/`;
+  document.getElementById('simpleQty').value = 1;
+  document.getElementById('simpleTickets').value = 1;
+  openModal('modalSimple');
+  document.getElementById('btnSimpleConfirm').onclick = () => {
+    const qty = parseInt(document.getElementById('simpleQty').value) || 1;
+    const tickets = parseInt(document.getElementById('simpleTickets').value) || 1;
+    addRow({
+      uid: `p-${prod.id}-${Date.now()}`, tmpl_id: prod.id, product_id: prod.id, 
+      uom_id: prod.uom_id ? prod.uom_id[0] : 1, name: prod.name, default_code: prod.default_code||'',
+      list_price: prod.list_price||0, standard_price: prod.standard_price||0, qty, tickets, is_kit_comp: false
+    });
+    closeModal();
+    toast('Producto añadido', 'success', 'check-circle');
+  };
+}
+
+async function openKitModal(prod) {
+  document.getElementById('modalKitTitle').innerHTML = `<i data-lucide="blocks" class="w-5 h-5 text-purple-500"></i> ${esc(prod.name)}`;
+  lucide.createIcons();
+  document.getElementById('kitComponentsArea').innerHTML = `<div class="flex flex-col items-center justify-center p-10 text-gray-400"><i data-lucide="loader-2" class="w-8 h-8 animate-spin text-primario mb-3"></i><p class="text-sm font-medium">Cargando BOM del kit...</p></div>`;
+  openModal('modalKit');
+  
+  try {
+    const r = await fetch(`${API}?action=kit_components&id=${prod.id}`);
+    const d = await r.json();
+    if (d.error || !d.is_kit || !d.components.length) {
+      document.getElementById('kitComponentsArea').innerHTML = `<p class="text-red-500 text-sm font-bold p-6 text-center"><i data-lucide="alert-triangle" class="w-8 h-8 mx-auto mb-2 inline-block"></i><br>${d.error || 'Kit sin componentes.'}</p>`;
+      lucide.createIcons();
+      return;
+    }
+    const html = d.components.map((c,i) => {
+      const img = c.image_128 ? `<img src="data:image/png;base64,${c.image_128}" class="w-8 h-8 object-contain mix-blend-multiply dark:mix-blend-normal rounded-md"/>` : `<i data-lucide="image" class="w-6 h-6 text-gray-300"></i>`;
+      return `
+      <div class="flex items-center gap-3 p-3 bg-superficie border border-borde rounded-xl mb-2 hover:border-primario/30 btn-trans">
+        ${img}
+        <div class="flex-1 min-w-0">
+          <div class="text-xs font-bold text-texto truncate leading-tight">${esc(c.name)}</div>
+          <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">${c.default_code||'S/N'} · S/${parseFloat(c.list_price||0).toFixed(2)}</div>
+        </div>
+        <div class="w-20 shrink-0 relative">
+          <input type="number" min="0" value="${c.qty_bom||1}" id="kit-qty-${i}" class="w-full bg-fondo border border-borde rounded-lg pl-6 pr-2 py-1.5 text-xs font-bold text-center outline-none focus:border-primario"/>
+          <i data-lucide="package" class="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400"></i>
+        </div>
+        <div class="w-20 shrink-0 relative">
+          <input type="number" min="0" value="${c.qty_bom||1}" id="kit-tkt-${i}" class="w-full bg-orange-50 dark:bg-orange-900/20 text-orange-600 border border-orange-200 dark:border-orange-900/50 rounded-lg pl-6 pr-2 py-1.5 text-xs font-bold text-center outline-none focus:border-orange-500"/>
+          <i data-lucide="tag" class="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-orange-400"></i>
+        </div>
+      </div>`;
+    }).join('');
+    
+    document.getElementById('kitComponentsArea').innerHTML = html;
+    lucide.createIcons();
+    
+    document.getElementById('btnKitConfirm').onclick = () => {
+      let added = 0;
+      d.components.forEach((c,i) => {
+        const qty = parseInt(document.getElementById(`kit-qty-${i}`)?.value) || 0;
+        const tickets = parseInt(document.getElementById(`kit-tkt-${i}`)?.value) || 0;
+        if (qty <= 0) return;
+        addRow({ uid: `k-${i}-${Date.now()}`, tmpl_id: c.product_id, product_id: c.product_id, uom_id: 1, name: c.name, default_code: c.default_code||'', list_price: c.list_price||0, standard_price: c.standard_price||0, qty, tickets, is_kit_comp: true, parent_name: prod.name });
+        added++;
+      });
+      closeModal();
+      toast(added > 0 ? `${added} partes añadidas` : 'Nada añadido', 'success', 'check-circle');
+    };
+  } catch(e) {}
+}
+
+// --- ACTIONS & EVENTS ---
+document.getElementById('btnSearch').addEventListener('click', doSearch);
+document.getElementById('searchInput').addEventListener('keydown', e => { if(e.key==='Enter') doSearch(); });
+document.getElementById('categInput').addEventListener('keydown', e => { if(e.key==='Enter') doSearch(); });
+
+document.getElementById('btnClear').addEventListener('click', () => {
+  document.getElementById('searchInput').value='';
+  document.getElementById('categInput').value='';
+  document.getElementById('resultsMeta').textContent='';
+  _currentProducts=[]; _stockCache={};
+  document.getElementById('resultsArea').innerHTML = `
+    <div class="flex flex-col items-center justify-center p-20 text-gray-400 animar-entrada">
+      <i data-lucide="package-search" class="w-16 h-16 opacity-50 mb-3 text-borde"></i>
+      <p class="font-semibold text-texto opacity-70">Formulario limpio</p>
+    </div>`;
+  lucide.createIcons();
+});
+
+document.getElementById('btnRefresh').addEventListener('click', () => {
+  _stockCache = {}; 
+  if (document.getElementById('searchInput').value || document.getElementById('categInput').value) doSearch();
+  toast('Stock sincronizado', 'info', 'refresh-cw');
+});
+
+document.getElementById('btnReceiveOdoo').addEventListener('click', async () => {
+  if (!receptionRows.length) return;
+  const loc_dest_id = parseInt(document.getElementById('locationSelect').value) || 0;
+  if (!loc_dest_id) { toast('Selecciona Destino/Ubicación', 'error', 'alert-triangle'); return; }
+
+  const btn = document.getElementById('btnReceiveOdoo');
+  btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> Registrando...';
+  lucide.createIcons();
+
+  const rows = receptionRows.map(r => ({ product_id: r.product_id, uom_id: r.uom_id||1, name: r.name, qty: r.qty }));
+  try {
+    const res = await fetch(API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:'receive', location_dest_id: loc_dest_id, rows}) });
+    const d = await res.json();
+    if (d.error) toast(d.error, 'error', 'x-circle');
+    else {
+      toast(`Traslado ${d.picking_name} OK`, 'success', 'check-circle');
+      receptionRows=[]; renderCart();
+    }
+  } catch(e) { toast('Error de conexión', 'error', 'wifi-off'); }
+  finally { btn.disabled=receptionRows.length===0; btn.innerHTML='<i data-lucide="warehouse" class="w-5 h-5"></i> Recepcionar en Odoo'; lucide.createIcons(); }
+});
+
+document.getElementById('btnPrintExcel').addEventListener('click', async () => {
+  if (!receptionRows.length) return;
+  const locSel = document.getElementById('locationSelect');
+  const locName = locSel.options[locSel.selectedIndex]?.text || '';
+  const btn = document.getElementById('btnPrintExcel');
+  btn.disabled=true; btn.innerHTML='<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> Exportando...';
+  lucide.createIcons();
+
+  const rows = receptionRows.map(r => ({ name:r.name, default_code:r.default_code, list_price:r.list_price, tickets:r.tickets, qty:r.qty, location:locName }));
+  try {
+    const res = await fetch(API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:'export_excel', rows}) });
+    const d = await res.json();
+    if (d.error) toast(d.error, 'error', 'x-circle');
+    else toast(`Etiquetas exportadas`, 'success', 'printer');
+  } catch(e) { toast('Error al exportar', 'error', 'wifi-off'); }
+  finally { btn.disabled=receptionRows.length===0; btn.innerHTML='<i data-lucide="printer" class="w-5 h-5"></i> Exportar Etiquetas'; lucide.createIcons(); }
+});
+
+document.getElementById('btnClearAll').addEventListener('click', () => {
+  receptionRows=[]; renderCart();
+});
+
+// --- UI HELPERS ---
+function toast(msg, type='info', icon='info') {
+  const c = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  const bg = type==='success' ? 'bg-green-600 border-green-500' : type==='error' ? 'bg-red-600 border-red-500' : 'bg-slate-800 border-slate-700';
+  el.className = `flex items-center gap-2 px-4 py-3 rounded-full text-white text-sm font-bold shadow-elevada animar-entrada border ${bg} backdrop-blur-md bg-opacity-95`;
+  el.innerHTML = `<i data-lucide="${icon}" class="w-4 h-4"></i> ${esc(msg)}`;
+  c.appendChild(el);
+  lucide.createIcons({root: el});
+  setTimeout(() => {
+    el.style.opacity='0'; el.style.transform='translateY(10px)'; el.style.transition='all 0.3s';
+    setTimeout(()=>el.remove(), 300);
+  }, 3000);
+}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+</script>
+</body>
+</html>

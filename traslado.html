@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>Traslado Interno – Tecnigass</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"/>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: { fontFamily: { sans: ['Inter','system-ui','sans-serif'] } }
+      }
+    }
+  </script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root { --color-primario:#7c3aed; --color-fondo:#f0f4f8; --color-superficie:#ffffff; --color-texto:#0f172a; --color-borde:#e2e8f0; }
+    html.dark { --color-primario:#8b5cf6; --color-fondo:#0f172a; --color-superficie:#1e293b; --color-texto:#f1f5f9; --color-borde:#334155; }
+    body { background:var(--color-fondo); color:var(--color-texto); transition:background .3s,color .3s; }
+    .glass-header { background:rgba(255,255,255,.7); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border-bottom:1px solid var(--color-borde); }
+    html.dark .glass-header { background:rgba(30,41,59,.7); }
+    ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--color-borde);border-radius:6px}
+    @keyframes fadeInSlideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    .animar-entrada{animation:fadeInSlideUp .3s cubic-bezier(.4,0,.2,1) forwards}
+    @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+    .animar-shake{animation:shake .3s ease-in-out}
+    .btn-trans{transition:all 200ms cubic-bezier(.4,0,.2,1)}
+    input,select{background-color:var(--color-superficie);color:var(--color-texto);border-color:var(--color-borde)}
+    input:focus,select:focus{outline:none;border-color:var(--color-primario);box-shadow:0 0 0 2px rgba(124,58,237,0.2)}
+    html.dark input,html.dark select{border-color:var(--color-borde);background-color:#0f172a}
+  </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden font-sans">
+
+<!-- HEADER -->
+<header class="glass-header px-5 py-3 flex items-center justify-between shrink-0 z-20 relative">
+  <div class="flex items-center gap-3">
+    <a href="/dashboard.html" class="w-8 h-8 rounded-lg text-gray-500 hover:bg-[var(--color-borde)] flex items-center justify-center btn-trans" title="Volver al Dashboard">
+      <i data-lucide="arrow-left" class="w-4 h-4"></i>
+    </a>
+    <div class="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-lg">
+      <i data-lucide="arrow-right-left" class="w-5 h-5"></i>
+    </div>
+    <div>
+      <h1 class="text-lg font-bold tracking-tight text-[var(--color-texto)] leading-tight">Tecnigass – Traslado</h1>
+      <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Movimientos internos Odoo</p>
+    </div>
+  </div>
+
+  <!-- Selector ORIGEN + DESTINO (desktop) -->
+  <div class="hidden md:flex items-center gap-3 bg-[var(--color-superficie)] px-3 py-2 rounded-2xl border border-[var(--color-borde)] shadow-sm">
+    <i data-lucide="map-pin" class="w-4 h-4 text-gray-400 shrink-0"></i>
+    <div class="flex items-center gap-2 text-xs">
+      <div class="flex flex-col gap-0.5">
+        <span class="font-black text-[9px] uppercase text-gray-400 tracking-widest">Origen</span>
+        <select id="locationSrcSelect" class="bg-transparent text-sm font-bold text-[var(--color-texto)] border-none outline-none appearance-none pr-5 cursor-pointer" style="background-image:url('data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2.5\'><polyline points=\'6 9 12 15 18 9\'></polyline></svg>');background-position:right center;background-repeat:no-repeat">
+          <option value="">Cargando...</option>
+        </select>
+      </div>
+      <i data-lucide="arrow-right" class="w-4 h-4 text-purple-500 shrink-0"></i>
+      <div class="flex flex-col gap-0.5">
+        <span class="font-black text-[9px] uppercase text-gray-400 tracking-widest">Destino</span>
+        <select id="locationDestSelect" class="bg-transparent text-sm font-bold text-[var(--color-texto)] border-none outline-none appearance-none pr-5 cursor-pointer" style="background-image:url('data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2.5\'><polyline points=\'6 9 12 15 18 9\'></polyline></svg>');background-position:right center;background-repeat:no-repeat">
+          <option value="">Cargando...</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex items-center gap-2">
+    <button id="btnDarkMode" class="p-2 rounded-xl text-gray-500 hover:bg-[var(--color-borde)] hover:text-[var(--color-texto)] btn-trans">
+      <i data-lucide="moon" class="w-5 h-5"></i>
+    </button>
+    <div class="hidden sm:flex items-center gap-2 bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 px-4 py-1.5 rounded-full text-sm font-semibold">
+      <i data-lucide="list" class="w-4 h-4"></i>
+      <span id="totalCount" class="bg-purple-600 text-white px-2 py-0.5 rounded-lg text-xs font-bold">0</span>
+    </div>
+  </div>
+</header>
+
+<div class="flex flex-1 overflow-hidden flex-col md:flex-row">
+
+  <!-- LEFT: SEARCH -->
+  <section class="flex-1 flex flex-col overflow-hidden border-b md:border-b-0 md:border-r border-[var(--color-borde)] z-10">
+    <div class="p-4 bg-[var(--color-superficie)]/50 backdrop-blur-md border-b border-[var(--color-borde)] shrink-0 space-y-3">
+      <!-- Selectores en MÓVIL -->
+      <div class="md:hidden grid grid-cols-2 gap-2">
+        <div class="flex flex-col gap-1 bg-[var(--color-superficie)] border border-[var(--color-borde)] rounded-xl p-3">
+          <span class="text-[9px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-1"><i data-lucide="map-pin" class="w-3 h-3"></i> Origen</span>
+          <select id="mSrcSelect" class="bg-transparent text-xs font-bold text-[var(--color-texto)] border-none outline-none cursor-pointer">
+            <option value="">—</option>
+          </select>
+        </div>
+        <div class="flex flex-col gap-1 bg-[var(--color-superficie)] border border-purple-200 dark:border-purple-800 rounded-xl p-3">
+          <span class="text-[9px] font-black uppercase text-purple-500 tracking-widest flex items-center gap-1"><i data-lucide="arrow-right" class="w-3 h-3"></i> Destino</span>
+          <select id="mDestSelect" class="bg-transparent text-xs font-bold text-[var(--color-texto)] border-none outline-none cursor-pointer">
+            <option value="">—</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="relative flex-1 min-w-[200px]">
+          <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
+          <input id="searchInput" type="text" class="w-full pl-9 pr-3 py-2 rounded-xl border-2 text-sm font-medium btn-trans" placeholder="Buscar por código o nombre..." autocomplete="off">
+        </div>
+        <div class="relative flex-1 max-w-[220px] min-w-[140px]">
+          <i data-lucide="folder" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
+          <input id="categInput" list="categList" class="w-full pl-9 pr-3 py-2 rounded-xl border-2 text-sm font-medium btn-trans bg-[var(--color-superficie)]" placeholder="Categoría..." autocomplete="off">
+          <datalist id="categList"></datalist>
+        </div>
+        <button id="btnSearch" class="flex items-center gap-2 bg-purple-600 text-white hover:bg-purple-700 px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm btn-trans">
+          <i data-lucide="search" class="w-4 h-4"></i> Buscar
+        </button>
+        <button id="btnRefresh" class="p-2.5 rounded-xl bg-[var(--color-superficie)] text-gray-600 hover:text-purple-600 border border-[var(--color-borde)] shadow-sm btn-trans" title="Sincronizar stock">
+          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+        </button>
+        <button id="btnClear" class="p-2.5 rounded-xl bg-[var(--color-superficie)] text-gray-500 hover:text-red-500 border border-[var(--color-borde)] shadow-sm btn-trans" title="Limpiar">
+          <i data-lucide="eraser" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div id="resultsMeta" class="text-xs font-semibold text-gray-500 px-1 h-4"></div>
+    </div>
+    
+    <div class="flex-1 overflow-y-auto p-4 md:p-5" id="resultsArea">
+      <div class="flex flex-col items-center justify-center h-full text-gray-400 animar-entrada">
+        <i data-lucide="arrow-right-left" class="w-16 h-16 opacity-40 mb-3 text-purple-300"></i>
+        <p class="font-semibold text-[var(--color-texto)] opacity-70">Busca productos para trasladar</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- RIGHT: CART -->
+  <aside class="w-full md:w-[380px] shrink-0 flex flex-col bg-[var(--color-superficie)]/90 backdrop-blur-xl border-t md:border-t-0 shadow-[-4px_0_24px_rgba(0,0,0,0.02)] relative z-20">
+    <div class="p-4 border-b border-[var(--color-borde)] flex items-center justify-between bg-[var(--color-superficie)] shrink-0">
+      <div class="flex items-center gap-2 font-bold text-[var(--color-texto)]">
+        <i data-lucide="clipboard-list" class="w-5 h-5 text-purple-600"></i>
+        Lista de Traslado
+      </div>
+      <span id="cartCount" class="bg-[var(--color-fondo)] text-gray-500 px-3 py-1 rounded-full text-xs font-bold">0 líneas</span>
+    </div>
+    
+    <div class="flex-1 overflow-y-auto p-3 space-y-3" id="cartList" style="max-height:45vh">
+      <div class="flex flex-col items-center justify-center text-gray-400 py-10 animar-entrada">
+        <i data-lucide="package-x" class="w-12 h-12 opacity-30 mb-2"></i>
+        <p class="text-sm font-medium">Lista vacía</p>
+      </div>
+    </div>
+    
+    <div class="p-4 bg-[var(--color-superficie)] border-t border-[var(--color-borde)] flex flex-col gap-3 shrink-0">
+      <button id="btnTransfer" disabled class="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl text-sm font-bold text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg btn-trans">
+        <i data-lucide="arrow-right-left" class="w-5 h-5"></i> Trasladar en Odoo
+      </button>
+      <button id="btnClearAll" class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-xs font-bold text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 btn-trans">
+        <i data-lucide="trash-2" class="w-4 h-4"></i> Vaciar Lista
+      </button>
+    </div>
+  </aside>
+</div>
+
+<!-- MODAL SIMPLE -->
+<div id="modalOverlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden items-center justify-center opacity-0 transition-opacity duration-200 p-4">
+  <div id="modalSimple" class="hidden w-full max-w-md bg-[var(--color-superficie)] rounded-2xl shadow-2xl overflow-hidden border border-[var(--color-borde)] transform scale-95 transition-transform duration-200">
+    <div class="p-5 border-b border-[var(--color-borde)] bg-[var(--color-fondo)]/50 flex items-start justify-between">
+      <div>
+        <h3 id="modalSimpleTitle" class="font-bold text-[var(--color-texto)] text-lg leading-tight">Producto</h3>
+        <p id="modalSimpleSub" class="text-xs font-medium text-gray-500 mt-1"></p>
+      </div>
+      <button id="modalClose" class="text-gray-400 hover:text-[var(--color-texto)] p-1.5 rounded-lg hover:bg-[var(--color-borde)] btn-trans">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <div class="p-5 space-y-4">
+      <div>
+        <label class="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">
+          <i data-lucide="package" class="w-4 h-4"></i> Cantidad a trasladar
+        </label>
+        <input id="simpleQty" type="number" min="1" value="1" class="w-full p-3 rounded-xl border-2 text-center font-bold text-lg btn-trans">
+      </div>
+    </div>
+    <div class="p-4 border-t border-[var(--color-borde)] bg-[var(--color-fondo)]/50 flex justify-end gap-3">
+      <button id="btnModalCancel" class="px-5 py-2 rounded-xl text-sm font-bold text-gray-600 hover:bg-[var(--color-borde)] btn-trans">Cancelar</button>
+      <button id="btnSimpleConfirm" class="flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-bold text-white bg-purple-600 hover:bg-purple-700 shadow-sm btn-trans">
+        <i data-lucide="check" class="w-4 h-4"></i> Añadir
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- KIT MODAL -->
+<div id="kitOverlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden items-center justify-center opacity-0 transition-opacity duration-200 p-4">
+  <div id="modalKit" class="w-full max-w-2xl bg-[var(--color-superficie)] rounded-2xl shadow-2xl overflow-hidden border border-[var(--color-borde)] transform scale-95 transition-transform duration-200 flex flex-col max-h-[88vh]">
+    <div class="p-5 border-b border-[var(--color-borde)] bg-[var(--color-fondo)]/50 flex items-start justify-between shrink-0">
+      <div>
+        <h3 id="modalKitTitle" class="font-bold text-[var(--color-texto)] text-lg">Kit</h3>
+        <p class="text-xs text-gray-500 mt-1">Ajusta la cantidad de cada componente a trasladar.</p>
+      </div>
+      <button id="kitModalClose" class="text-gray-400 hover:text-[var(--color-texto)] p-1.5 rounded-lg hover:bg-[var(--color-borde)] btn-trans">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <div class="p-5 overflow-y-auto flex-1" id="kitComponentsArea"></div>
+    <div class="p-4 border-t border-[var(--color-borde)] bg-[var(--color-fondo)]/50 flex justify-end gap-3 shrink-0">
+      <button id="kitModalCancel" class="px-5 py-2 rounded-xl text-sm font-bold text-gray-600 hover:bg-[var(--color-borde)] btn-trans">Cancelar</button>
+      <button id="btnKitConfirm" class="flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-bold text-white bg-purple-600 hover:bg-purple-700 shadow-sm btn-trans">
+        <i data-lucide="check" class="w-4 h-4"></i> Añadir Componentes
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- TOASTS -->
+<div id="toastContainer" class="fixed bottom-6 left-1/2 -translate-x-1/2 flex flex-col gap-3 z-[100] pointer-events-none"></div>
+
+<script>
+const API = '/api';
+let transferRows = [];
+let _currentProducts = [];
+let _stockCache = {};
+let _catMap = {};
+let _locAlmId = null, _locTieId = null;
+
+// --- INIT ---
+document.addEventListener('DOMContentLoaded', () => {
+  lucide.createIcons();
+  const isDark = localStorage.getItem('theme') === 'dark';
+  if (isDark) document.documentElement.classList.add('dark');
+  document.getElementById('btnDarkMode').addEventListener('click', () => {
+    document.documentElement.classList.toggle('dark');
+    localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+  });
+  loadLocations();
+  loadCategories();
+  loadCart();
+  
+  // Sync mobile-desktop selects
+  ['locationSrcSelect','mSrcSelect'].forEach(id => document.getElementById(id).addEventListener('change', syncSelects));
+  ['locationDestSelect','mDestSelect'].forEach(id => document.getElementById(id).addEventListener('change', syncSelects));
+});
+
+function syncSelects() {
+  const src = document.getElementById('locationSrcSelect').value || document.getElementById('mSrcSelect').value;
+  const dst = document.getElementById('locationDestSelect').value || document.getElementById('mDestSelect').value;
+  document.getElementById('locationSrcSelect').value = src;
+  document.getElementById('mSrcSelect').value = src;
+  document.getElementById('locationDestSelect').value = dst;
+  document.getElementById('mDestSelect').value = dst;
+  saveCart();
+}
+
+// --- LOCATIONS ---
+async function loadLocations() {
+  try {
+    const r = await fetch(`${API}?action=locations`);
+    const d = await r.json();
+    const saved = JSON.parse(localStorage.getItem('tecnigass_traslado') || '{}');
+    const savedSrc = saved.src || '';
+    const savedDst = saved.dst || '';
+
+    const sels = ['locationSrcSelect','mSrcSelect','locationDestSelect','mDestSelect'];
+    sels.forEach(id => {
+      document.getElementById(id).innerHTML = '<option value="">— Seleccionar —</option>';
+    });
+
+    (d.locations || []).forEach(loc => {
+      const n = (loc.complete_name || '').replace('PUN/','');
+      const cn = (loc.complete_name || '').toUpperCase();
+      
+      ['locationSrcSelect','mSrcSelect'].forEach(id => {
+        const opt = document.createElement('option');
+        opt.value = loc.id; opt.textContent = n;
+        if (savedSrc && loc.id == savedSrc) opt.selected = true;
+        else if (!savedSrc && cn.includes('ALMACEN')) opt.selected = true;
+        document.getElementById(id).appendChild(opt);
+      });
+      ['locationDestSelect','mDestSelect'].forEach(id => {
+        const opt = document.createElement('option');
+        opt.value = loc.id; opt.textContent = n;
+        if (savedDst && loc.id == savedDst) opt.selected = true;
+        else if (!savedDst && cn.includes('TIENDA')) opt.selected = true;
+        document.getElementById(id).appendChild(opt);
+      });
+      
+      if (cn.includes('ALMACEN')) _locAlmId = loc.id;
+      if (cn.includes('TIENDA'))  _locTieId = loc.id;
+    });
+  } catch(e) {}
+}
+
+// --- CATEGORIES ---
+async function loadCategories() {
+  try {
+    const r = await fetch(`${API}?action=categories`);
+    const d = await r.json();
+    const dl = document.getElementById('categList');
+    (d.categories || []).forEach(c => {
+      _catMap[c.complete_name] = c.id;
+      const opt = document.createElement('option');
+      opt.value = c.complete_name; dl.appendChild(opt);
+    });
+  } catch(e) {}
+}
+
+// --- SEARCH ---
+async function doSearch() {
+  const q = document.getElementById('searchInput').value.trim();
+  const catName = document.getElementById('categInput').value.trim();
+  const cat = _catMap[catName] || '';
+  const area = document.getElementById('resultsArea');
+  const meta = document.getElementById('resultsMeta');
+
+  if (!q && !catName) {
+    area.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-gray-400 animar-entrada"><i data-lucide="arrow-right-left" class="w-16 h-16 opacity-40 mb-3 text-purple-300"></i><p class="font-semibold opacity-70">Busca productos para trasladar</p></div>`;
+    lucide.createIcons(); return;
+  }
+  area.innerHTML = `<div class="flex flex-col items-center justify-center p-14"><i data-lucide="loader-2" class="w-8 h-8 animate-spin text-purple-600 mb-2"></i><span class="text-sm font-bold text-gray-500">Conectando...</span></div>`;
+  lucide.createIcons();
+  meta.textContent = 'Buscando...';
+
+  try {
+    const r = await fetch(`${API}?action=search&q=${encodeURIComponent(q)}&categ=${cat}`);
+    const d = await r.json();
+    if (d.error) {
+      area.innerHTML = `<div class="text-center p-10 text-red-500 font-bold"><i data-lucide="alert-triangle" class="w-10 h-10 mx-auto mb-2"></i>${d.error}</div>`;
+      meta.textContent=''; lucide.createIcons(); return;
+    }
+    const prods = d.products || [];
+    meta.textContent = `${prods.length} resultado(s)`;
+    _currentProducts = prods;
+    renderGrid(prods);
+    loadStock(prods);
+  } catch(e) {
+    area.innerHTML = `<div class="text-center p-10 text-red-500"><i data-lucide="wifi-off" class="w-10 h-10 mx-auto mb-2"></i>Error de red</div>`;
+    if(lucide) lucide.createIcons();
+  }
+}
+
+// --- GRID ---
+function renderGrid(products) {
+  const area = document.getElementById('resultsArea');
+  if (!products.length) {
+    area.innerHTML = `<div class="flex flex-col items-center justify-center p-14 text-gray-400 animar-entrada"><i data-lucide="search-x" class="w-12 h-12 mb-2 opacity-50"></i><p class="font-bold">Sin resultados</p></div>`;
+    lucide.createIcons(); return;
+  }
+  const html = products.map(p => {
+    const code = p.default_code || 'N/A';
+    const img = p.image_128 ? `<img src="data:image/png;base64,${p.image_128}" class="w-full h-full object-contain"/>` : `<i data-lucide="image" class="w-12 h-12 text-[var(--color-borde)]"></i>`;
+    const s = _stockCache[String(p.id)] || {};
+    const almQty = s.alm !== undefined ? parseFloat(s.alm).toFixed(0) : '—';
+    const tieQty = s.tie !== undefined ? parseFloat(s.tie).toFixed(0) : '—';
+    const isKit = p.is_kit;
+    return `
+    <div class="bg-[var(--color-superficie)] rounded-xl border border-[var(--color-borde)] shadow-sm hover:shadow-lg hover:-translate-y-1 overflow-hidden flex flex-col cursor-pointer btn-trans animar-entrada relative" onclick="openModal(${p.id})" id="card-${p.id}">
+      ${isKit?`<div class="absolute top-2 left-2 bg-purple-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1"><i data-lucide="blocks" class="w-3 h-3"></i> KIT</div>`:''}
+      <div class="h-28 bg-white dark:bg-slate-800 p-2 flex items-center justify-center">${img}</div>
+      <div class="p-3 flex-1 flex flex-col">
+        <div class="text-[10px] font-black text-purple-600 dark:text-purple-400 tracking-widest uppercase mb-1">${code}</div>
+        <div class="text-xs font-bold text-[var(--color-texto)] leading-snug flex-1">${esc(p.name)}</div>
+        <div class="flex gap-2 mt-2">
+          <span class="stock-chip alm flex items-center gap-1 text-[10px] font-bold bg-cyan-50 dark:bg-cyan-900/20 text-cyan-700 dark:text-cyan-300 px-1.5 py-0.5 rounded-md border border-cyan-100 dark:border-cyan-800"><i data-lucide="warehouse" class="w-3 h-3"></i> ${almQty}</span>
+          <span class="stock-chip tie flex items-center gap-1 text-[10px] font-bold bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded-md border border-indigo-100 dark:border-indigo-800"><i data-lucide="store" class="w-3 h-3"></i> ${tieQty}</span>
+        </div>
+      </div>
+      <div class="p-3 bg-[var(--color-fondo)]/50 border-t border-[var(--color-borde)] flex items-center justify-between">
+        <span class="font-bold text-sm">S/ ${parseFloat(p.list_price||0).toFixed(2)}</span>
+        <button class="bg-purple-100 hover:bg-purple-600 text-purple-700 hover:text-white dark:bg-purple-900/30 dark:text-purple-300 text-xs font-bold py-1.5 px-3 rounded-full btn-trans flex items-center gap-1">
+          <i data-lucide="plus" class="w-3 h-3"></i> ${isKit?'Kit':'Añadir'}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+  area.innerHTML = `<div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">${html}</div>`;
+  lucide.createIcons();
+}
+
+async function loadStock(prods) {
+  if (!prods.length) return;
+  const ids = prods.map(p=>p.id).join(',');
+  const locs = [];
+  if (_locAlmId) locs.push({id:_locAlmId,key:'alm'});
+  if (_locTieId) locs.push({id:_locTieId,key:'tie'});
+  for (const loc of locs) {
+    try {
+      const r = await fetch(`${API}?action=stock_by_location&loc_id=${loc.id}&tmpl_ids=${ids}`);
+      const d = await r.json();
+      Object.entries(d.stock||{}).forEach(([k,v])=>{if(!_stockCache[k])_stockCache[k]={};_stockCache[k][loc.key]=v;});
+    } catch(e){}
+  }
+  prods.forEach(p=>{
+    const card = document.getElementById(`card-${p.id}`);
+    if (!card) return;
+    const s = _stockCache[String(p.id)] || {};
+    const a = card.querySelector('.stock-chip.alm'); if(a) a.innerHTML=`<i data-lucide="warehouse" class="w-3 h-3"></i> ${s.alm!==undefined?parseFloat(s.alm).toFixed(0):'—'}`;
+    const t = card.querySelector('.stock-chip.tie'); if(t) t.innerHTML=`<i data-lucide="store" class="w-3 h-3"></i> ${s.tie!==undefined?parseFloat(s.tie).toFixed(0):'—'}`;
+    lucide.createIcons({root:card});
+  });
+}
+
+// --- MODAL ---
+function openModal(tmplId) {
+  const prod = _currentProducts.find(p=>p.id===tmplId);
+  if (!prod) return;
+  if (prod.is_kit) openKitModal(prod);
+  else openSimpleModal(prod);
+}
+
+function openSimpleModal(prod) {
+  document.getElementById('modalSimpleTitle').textContent = prod.name;
+  document.getElementById('modalSimpleSub').textContent = `Ref: ${prod.default_code||'N/A'} · S/${parseFloat(prod.list_price||0).toFixed(2)}`;
+  document.getElementById('simpleQty').value = 1;
+  
+  const ov = document.getElementById('modalOverlay');
+  const mo = document.getElementById('modalSimple');
+  ov.classList.remove('hidden'); ov.classList.add('flex');
+  mo.classList.remove('hidden');
+  requestAnimationFrame(()=>{ov.classList.remove('opacity-0');mo.classList.remove('scale-95');});
+  
+  document.getElementById('btnSimpleConfirm').onclick = () => {
+    const qty = parseInt(document.getElementById('simpleQty').value)||1;
+    addRow({uid:`p-${prod.id}-${Date.now()}`,tmpl_id:prod.id,product_id:prod.id,name:prod.name,default_code:prod.default_code||'',qty,is_kit_comp:false});
+    closeSimpleModal();
+    toast('Añadido a lista', 'success', 'check-circle');
+  };
+}
+
+function closeSimpleModal() {
+  const ov = document.getElementById('modalOverlay');
+  ov.classList.add('opacity-0');
+  document.getElementById('modalSimple').classList.add('scale-95');
+  setTimeout(()=>{ov.classList.add('hidden');ov.classList.remove('flex');document.getElementById('modalSimple').classList.add('hidden');}, 200);
+}
+
+async function openKitModal(prod) {
+  document.getElementById('modalKitTitle').textContent = prod.name;
+  document.getElementById('kitComponentsArea').innerHTML = `<div class="flex justify-center p-10"><i data-lucide="loader-2" class="w-8 h-8 animate-spin text-purple-600"></i></div>`;
+  
+  const ov = document.getElementById('kitOverlay');
+  ov.classList.remove('hidden'); ov.classList.add('flex');
+  document.getElementById('modalKit').classList.remove('scale-95');
+  requestAnimationFrame(()=>ov.classList.remove('opacity-0'));
+  lucide.createIcons();
+
+  try {
+    const r = await fetch(`${API}?action=kit_components&id=${prod.id}`);
+    const d = await r.json();
+    if (d.error || !d.is_kit || !d.components.length) {
+      document.getElementById('kitComponentsArea').innerHTML = `<p class="text-red-500 text-center p-6">${d.error||'Sin componentes'}</p>`;
+      return;
+    }
+    document.getElementById('kitComponentsArea').innerHTML = d.components.map((c,i) => {
+      const img = c.image_128 ? `<img src="data:image/png;base64,${c.image_128}" class="w-8 h-8 object-contain rounded-md"/>` : `<i data-lucide="image" class="w-6 h-6 text-gray-300"></i>`;
+      return `<div class="flex items-center gap-3 p-3 bg-[var(--color-superficie)] border border-[var(--color-borde)] rounded-xl mb-2 btn-trans">${img}<div class="flex-1 min-w-0"><div class="text-xs font-bold truncate">${esc(c.name)}</div><div class="text-[10px] text-gray-400">${c.default_code||'—'}</div></div><div class="relative w-20"><input type="number" min="0" value="${c.qty_bom||1}" id="kit-qty-${i}" class="w-full bg-[var(--color-fondo)] border border-[var(--color-borde)] rounded-lg pl-6 pr-2 py-1.5 text-xs font-bold text-center outline-none"/><i data-lucide="package" class="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400"></i></div></div>`;
+    }).join('');
+    lucide.createIcons();
+    
+    document.getElementById('btnKitConfirm').onclick = () => {
+      let added = 0;
+      d.components.forEach((c,i) => {
+        const qty = parseInt(document.getElementById(`kit-qty-${i}`)?.value)||0;
+        if (qty<=0) return;
+        addRow({uid:`k-${i}-${Date.now()}`,tmpl_id:c.product_id,product_id:c.product_id,name:c.name,default_code:c.default_code||'',qty,is_kit_comp:true,parent_name:prod.name});
+        added++;
+      });
+      closeKitModal();
+      toast(added>0?`${added} componentes añadidos`:'Nada añadido','success','check-circle');
+    };
+  } catch(e) {}
+}
+
+function closeKitModal() {
+  const ov = document.getElementById('kitOverlay');
+  ov.classList.add('opacity-0');
+  document.getElementById('modalKit').classList.add('scale-95');
+  setTimeout(()=>{ov.classList.add('hidden');ov.classList.remove('flex');}, 200);
+}
+
+document.getElementById('modalClose').addEventListener('click', closeSimpleModal);
+document.getElementById('btnModalCancel').addEventListener('click', closeSimpleModal);
+document.getElementById('kitModalClose').addEventListener('click', closeKitModal);
+document.getElementById('kitModalCancel').addEventListener('click', closeKitModal);
+document.addEventListener('keydown', e => { if(e.key==='Escape'){closeSimpleModal();closeKitModal();} });
+
+// --- CART CRUD ---
+function saveCart() {
+  const src = document.getElementById('locationSrcSelect').value;
+  const dst = document.getElementById('locationDestSelect').value;
+  localStorage.setItem('tecnigass_traslado', JSON.stringify({rows:transferRows,src,dst}));
+}
+
+function loadCart() {
+  try {
+    const data = JSON.parse(localStorage.getItem('tecnigass_traslado')||'{}');
+    if (data.rows) { transferRows = data.rows; renderCart(); }
+  } catch(e){}
+}
+
+function addRow(row) { transferRows.push(row); renderCart(); }
+function removeRow(uid) { transferRows = transferRows.filter(r=>r.uid!==uid); renderCart(); }
+
+function renderCart() {
+  const count = transferRows.length;
+  document.getElementById('totalCount').textContent = count;
+  document.getElementById('cartCount').textContent = `${count} ítem(s)`;
+  document.getElementById('btnTransfer').disabled = count===0;
+  saveCart();
+  
+  const list = document.getElementById('cartList');
+  if (!count) {
+    list.innerHTML = `<div class="flex flex-col items-center justify-center text-gray-400 py-10 animar-entrada"><i data-lucide="package-x" class="w-12 h-12 opacity-30 mb-2"></i><p class="text-sm font-bold opacity-70">Lista vacía</p></div>`;
+    lucide.createIcons(); return;
+  }
+  list.innerHTML = transferRows.map(r => `
+<div class="bg-[var(--color-superficie)] rounded-xl border border-[var(--color-borde)] shadow-sm mb-2 overflow-hidden animar-entrada ${r.is_kit_comp?'border-l-4 border-l-purple-500':'border-l-4 border-l-purple-400'} group">
+  <div class="p-3 flex items-start gap-2">
+    <div class="flex-1 min-w-0">
+      <div class="text-xs font-bold text-[var(--color-texto)] truncate">${esc(r.name)}</div>
+      <div class="text-[10px] text-gray-400 mt-0.5">${r.default_code||'S/N'}${r.is_kit_comp?` · Kit: ${esc(r.parent_name||'')}`:''}</div>
+    </div>
+    <button class="text-gray-400 hover:text-red-500 p-1.5 rounded-lg btn-trans opacity-0 group-hover:opacity-100" onclick="removeRow('${r.uid}')">
+      <i data-lucide="trash-2" class="w-4 h-4"></i>
+    </button>
+  </div>
+  <div class="bg-[var(--color-fondo)]/50 border-t border-[var(--color-borde)] px-3 py-2">
+    <label class="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1 mb-1"><i data-lucide="package" class="w-3 h-3"></i> Cantidad</label>
+    <input type="number" min="1" value="${r.qty}" onchange="updateRow('${r.uid}','qty',this.value)" class="w-full bg-[var(--color-superficie)] border border-[var(--color-borde)] rounded-lg px-2 py-1.5 text-xs font-bold text-center btn-trans outline-none focus:border-purple-500"/>
+  </div>
+</div>`).join('');
+  lucide.createIcons();
+}
+
+function updateRow(uid, field, val) {
+  const row = transferRows.find(r=>r.uid===uid);
+  if (row) { row[field] = parseInt(val)||0; saveCart(); }
+}
+
+// --- TRANSFER ACTION ---
+document.getElementById('btnTransfer').addEventListener('click', async () => {
+  const src = parseInt(document.getElementById('locationSrcSelect').value)||0;
+  const dst = parseInt(document.getElementById('locationDestSelect').value)||0;
+  if (!src) { toast('Selecciona ubicación de ORIGEN','error','alert-triangle'); return; }
+  if (!dst) { toast('Selecciona ubicación de DESTINO','error','alert-triangle'); return; }
+  if (src===dst) { toast('Origen y destino deben ser distintos','error','alert-triangle'); return; }
+  if (!transferRows.length) return;
+
+  const btn = document.getElementById('btnTransfer');
+  btn.disabled=true; btn.innerHTML='<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> Procesando...';
+  lucide.createIcons();
+
+  const rows = transferRows.map(r=>({product_id:r.product_id,name:r.name,qty:r.qty}));
+  try {
+    const res = await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'transfer',location_src_id:src,location_dest_id:dst,rows})});
+    const d = await res.json();
+    if (d.error) toast(d.error,'error','x-circle');
+    else { toast(`Traslado ${d.picking_name} OK`,'success','check-circle'); transferRows=[]; renderCart(); }
+  } catch(e) { toast('Error de conexión','error','wifi-off'); }
+  finally { btn.disabled=transferRows.length===0; btn.innerHTML='<i data-lucide="arrow-right-left" class="w-5 h-5"></i> Trasladar en Odoo'; lucide.createIcons(); }
+});
+
+document.getElementById('btnClearAll').addEventListener('click', ()=>{transferRows=[];renderCart();});
+
+// --- SEARCH EVENTS ---
+document.getElementById('btnSearch').addEventListener('click', doSearch);
+['searchInput','categInput'].forEach(id=>document.getElementById(id).addEventListener('keydown',e=>{if(e.key==='Enter')doSearch();}));
+document.getElementById('btnClear').addEventListener('click',()=>{
+  document.getElementById('searchInput').value='';
+  document.getElementById('categInput').value='';
+  document.getElementById('resultsMeta').textContent='';
+  _currentProducts=[];_stockCache={};
+  document.getElementById('resultsArea').innerHTML=`<div class="flex flex-col items-center justify-center h-full text-gray-400 animar-entrada"><i data-lucide="arrow-right-left" class="w-16 h-16 opacity-40 mb-3 text-purple-300"></i><p class="font-semibold opacity-70">Busca productos para trasladar</p></div>`;
+  lucide.createIcons();
+});
+document.getElementById('btnRefresh').addEventListener('click',()=>{_stockCache={};if(document.getElementById('searchInput').value||document.getElementById('categInput').value)doSearch();toast('Stock actualizado','info','refresh-cw');});
+
+// --- TOAST ---
+function toast(msg, type='info', icon='info') {
+  const c = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  const bg = type==='success'?'bg-green-600 border-green-500':type==='error'?'bg-red-600 border-red-500':'bg-slate-800 border-slate-700';
+  el.className=`flex items-center gap-2 px-4 py-3 rounded-full text-white text-sm font-bold shadow-lg animar-entrada border ${bg} backdrop-blur-md`;
+  el.innerHTML=`<i data-lucide="${icon}" class="w-4 h-4"></i> ${esc(msg)}`;
+  c.appendChild(el); lucide.createIcons({root:el});
+  setTimeout(()=>{el.style.opacity='0';el.style.transform='translateY(10px)';el.style.transition='all .3s';setTimeout(()=>el.remove(),300);},3000);
+}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+</script>
+</body>
+</html>

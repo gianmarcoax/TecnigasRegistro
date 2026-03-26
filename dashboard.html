@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Tecnigass – Panel Principal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"/>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter','system-ui','sans-serif'] } } } };
+  </script>
+  <style>
+    :root { --color-primario:#2563eb; --color-fondo:#f0f4f8; --color-superficie:#ffffff; --color-texto:#0f172a; --color-borde:#e2e8f0; }
+    html.dark { --color-primario:#3b82f6; --color-fondo:#0f172a; --color-superficie:#1e293b; --color-texto:#f1f5f9; --color-borde:#334155; }
+    body { font-family:'Inter',system-ui,sans-serif; background:var(--color-fondo); color:var(--color-texto); transition:background .3s,color .3s; }
+    @keyframes fadeInUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+    .card-enter { animation: fadeInUp .4s cubic-bezier(.4,0,.2,1) both; }
+    .card-enter:nth-child(1){animation-delay:.05s} .card-enter:nth-child(2){animation-delay:.12s} .card-enter:nth-child(3){animation-delay:.19s}
+    .glass { background:rgba(255,255,255,.7); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
+    html.dark .glass { background:rgba(30,41,59,.7); }
+    .module-card { transition: all 250ms cubic-bezier(.4,0,.2,1); }
+    .module-card:hover { transform:translateY(-6px); }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+<!-- HEADER -->
+<header class="glass border-b border-[var(--color-borde)] px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+  <div class="flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg">
+      <i data-lucide="layout-dashboard" class="w-5 h-5 text-white"></i>
+    </div>
+    <div>
+      <h1 class="text-lg font-extrabold text-[var(--color-texto)] tracking-tight">Tecnigass</h1>
+      <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Panel de Control · ERP Odoo</p>
+    </div>
+  </div>
+  <button id="btnDark" class="p-2 rounded-xl text-gray-500 hover:bg-[var(--color-borde)] hover:text-[var(--color-texto)] transition-colors">
+    <i data-lucide="moon" class="w-5 h-5"></i>
+  </button>
+</header>
+
+<!-- HERO -->
+<main class="flex-1 flex flex-col items-center justify-center px-6 py-16">
+  <div class="text-center mb-12 card-enter">
+    <h2 class="text-4xl font-extrabold text-[var(--color-texto)] tracking-tight mb-3">¿Qué deseas hacer?</h2>
+    <p class="text-gray-500 dark:text-gray-400 font-medium text-lg max-w-xl mx-auto">Selecciona el módulo para comenzar a trabajar con el inventario de Tecnigass.</p>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl w-full">
+    
+    <!-- Catálogo -->
+    <a href="/index.html" class="module-card card-enter bg-[var(--color-superficie)] rounded-2xl border border-[var(--color-borde)] shadow-lg hover:shadow-2xl overflow-hidden flex flex-col group">
+      <div class="p-8 text-center flex-1">
+        <div class="w-16 h-16 rounded-2xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform duration-300 shadow-sm">
+          <i data-lucide="book-open" class="w-8 h-8"></i>
+        </div>
+        <h3 class="text-xl font-extrabold text-[var(--color-texto)] mb-2">Catálogo</h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400 font-medium leading-relaxed">Consulta el catálogo completo de productos con precios, imágenes y stock disponible.</p>
+      </div>
+      <div class="px-8 pb-6">
+        <div class="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 text-white font-bold text-sm group-hover:bg-blue-700 transition-colors">
+          <i data-lucide="arrow-right" class="w-4 h-4"></i> Ver Catálogo
+        </div>
+      </div>
+    </a>
+
+    <!-- Recepción -->
+    <a href="/recepcion.html" class="module-card card-enter bg-[var(--color-superficie)] rounded-2xl border border-[var(--color-borde)] shadow-lg hover:shadow-2xl overflow-hidden flex flex-col group relative">
+      <div class="absolute top-3 right-3 bg-green-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Activo</div>
+      <div class="p-8 text-center flex-1">
+        <div class="w-16 h-16 rounded-2xl bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform duration-300 shadow-sm">
+          <i data-lucide="package-open" class="w-8 h-8"></i>
+        </div>
+        <h3 class="text-xl font-extrabold text-[var(--color-texto)] mb-2">Recepción</h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400 font-medium leading-relaxed">Recepciona mercancía de proveedores en Almacén o Tienda. Exporta etiquetas para BarTender.</p>
+      </div>
+      <div class="px-8 pb-6">
+        <div class="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-green-600 text-white font-bold text-sm group-hover:bg-green-700 transition-colors">
+          <i data-lucide="arrow-right" class="w-4 h-4"></i> Ir a Recepción
+        </div>
+      </div>
+    </a>
+
+    <!-- Traslado -->
+    <a href="/traslado.html" class="module-card card-enter bg-[var(--color-superficie)] rounded-2xl border border-[var(--color-borde)] shadow-lg hover:shadow-2xl overflow-hidden flex flex-col group">
+      <div class="p-8 text-center flex-1">
+        <div class="w-16 h-16 rounded-2xl bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform duration-300 shadow-sm">
+          <i data-lucide="arrow-right-left" class="w-8 h-8"></i>
+        </div>
+        <h3 class="text-xl font-extrabold text-[var(--color-texto)] mb-2">Traslado</h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400 font-medium leading-relaxed">Realiza movimientos internos de stock entre Almacén y Tienda. Genera traslados PUN/INT en Odoo.</p>
+      </div>
+      <div class="px-8 pb-6">
+        <div class="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-purple-600 text-white font-bold text-sm group-hover:bg-purple-700 transition-colors">
+          <i data-lucide="arrow-right" class="w-4 h-4"></i> Ir a Traslado
+        </div>
+      </div>
+    </a>
+
+  </div>
+</main>
+
+<!-- FOOTER -->
+<footer class="text-center py-5 text-xs text-gray-400 font-medium border-t border-[var(--color-borde)]">
+  Tecnigass &nbsp;·&nbsp; Sistema ERP Odoo &nbsp;·&nbsp; <span id="currentTime"></span>
+</footer>
+
+<script>
+  lucide.createIcons();
+  
+  // Dark mode
+  const isDark = localStorage.getItem('theme') === 'dark';
+  if (isDark) document.documentElement.classList.add('dark');
+  document.getElementById('btnDark').addEventListener('click', () => {
+    document.documentElement.classList.toggle('dark');
+    localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+  });
+
+  // Live clock
+  function tick() {
+    document.getElementById('currentTime').textContent = new Date().toLocaleTimeString('es-PE');
+  }
+  tick(); setInterval(tick, 1000);
+</script>
+</body>
+</html>
