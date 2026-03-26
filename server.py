@@ -9,8 +9,8 @@ import json
 import urllib.parse
 import os
 import sys
-import re
-import shutil
+import base64
+import io
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 
 # ── Odoo credentials (from env vars or config.json) ───────────────
@@ -32,8 +32,7 @@ if not ODOO_USER or not ODOO_APIKEY:
     print("Error: Faltan credenciales ODOO_USER o ODOO_APIKEY. Revisa config.json o tus variables de entorno.")
     sys.exit(1)
 
-# Carpeta donde se guardan los Excel exportados
-EXPORTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'exports')
+# Plantilla Excel (opcional, solo se usa si existe localmente)
 TEMPLATE_XLSX = os.path.join(os.path.dirname(os.path.abspath(__file__)), '010.xlsx')
 
 _uid = None
@@ -52,38 +51,16 @@ def odoo_call(model, method, args, kwargs):
     return models.execute_kw(ODOO_DB, uid, ODOO_APIKEY, model, method, args, kwargs)
 
 
-# ── Excel rotation helper ─────────────────────────────────────
-def rotate_and_save_excel(rows):
+# ── Excel builder (en memoria) ────────────────────────────────
+def build_excel_bytes(rows):
     """
-    Guarda el Excel con rotación de nombres:
-      010.xlsx  →  se renombra a  0100001.xlsx  (o 0100002.xlsx, …)
-    El nuevo export siempre queda como  010.xlsx
-    Devuelve (ruta_guardada, nombre_archivo)
+    Genera el Excel en memoria y devuelve los bytes.
+    No guarda nada en disco (compatible con Railway/cloud).
     """
     import openpyxl
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
-    os.makedirs(EXPORTS_DIR, exist_ok=True)
-    dest_path = os.path.join(EXPORTS_DIR, '010.xlsx')
-
-    # Rotación: si ya existe 010.xlsx, renombrarlo
-    if os.path.exists(dest_path):
-        # Buscar el siguiente número disponible
-        existing = [
-            f for f in os.listdir(EXPORTS_DIR)
-            if re.match(r'^010\d{4}\.xlsx$', f)
-        ]
-        nums = []
-        for fn in existing:
-            m = re.match(r'^010(\d{4})\.xlsx$', fn)
-            if m:
-                nums.append(int(m.group(1)))
-        next_num = max(nums) + 1 if nums else 1
-        rotated_name = f'010{next_num:04d}.xlsx'
-        rotated_path = os.path.join(EXPORTS_DIR, rotated_name)
-        shutil.move(dest_path, rotated_path)
-
-    # Crear nuevo workbook basado en la plantilla si existe
+    # Crear workbook basado en la plantilla si existe localmente
     if os.path.exists(TEMPLATE_XLSX):
         wb = openpyxl.load_workbook(TEMPLATE_XLSX)
         ws = wb.active
@@ -111,7 +88,6 @@ def rotate_and_save_excel(rows):
         ws.cell(row=row_idx, column=2, value=row.get('name', '')).border = border
         ws.cell(row=row_idx, column=3, value=row.get('list_price', 0)).border = border
         ws.cell(row=row_idx, column=4, value=row.get('default_code', '')).border = border
-        # Ajustar bordes en todas las celdas de la fila
         for col_idx in range(1, 5):
             ws.cell(row=row_idx, column=col_idx).border = border
 
@@ -120,8 +96,9 @@ def rotate_and_save_excel(rows):
     for col_idx, width in enumerate(col_widths, 1):
         ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = width
 
-    wb.save(dest_path)
-    return dest_path, '010.xlsx'
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
 
 
 # ── HTTP Handler ──────────────────────────────────────────────
@@ -152,6 +129,10 @@ class Handler(SimpleHTTPRequestHandler):
                     result = self.handle_locations()
                 elif action == 'stock_by_location':
                     result = self.handle_stock_by_location(params)
+                elif action == 'history_receptions':
+                    result = self.handle_history_receptions(params)
+                elif action == 'picking_detail':
+                    result = self.handle_picking_detail(params)
                 else:
                     result = {'error': 'Acción no reconocida'}
             except Exception as e:
@@ -349,24 +330,110 @@ class Handler(SimpleHTTPRequestHandler):
     def handle_export_excel(self, data):
         """
         Recibe: { action, rows: [{name, default_code, list_price, tickets}, ...] }
-        Guarda el Excel con rotación de nombres y devuelve el resultado.
+        Genera el Excel en memoria y lo devuelve como base64 para que
+        el navegador lo descargue directamente (sin guardar en disco).
         """
         rows = data.get('rows', [])
         if not rows:
             return {'error': 'No hay productos para exportar'}
 
         try:
-            saved_path, filename = rotate_and_save_excel(rows)
+            xlsx_bytes = build_excel_bytes(rows)
+            b64 = base64.b64encode(xlsx_bytes).decode('utf-8')
             return {
                 'ok': True,
-                'filename': filename,
-                'path': saved_path,
+                'filename': '010.xlsx',
+                'data': b64,
                 'count': len(rows),
             }
         except ImportError:
             return {'error': 'Falta openpyxl. Instala con: pip install openpyxl'}
         except Exception as e:
             return {'error': str(e)}
+
+    # ── History: recepciones desde Odoo ──────────────────────────
+    def handle_history_receptions(self, params):
+        """
+        Devuelve los stock.picking de tipo incoming (recepciones).
+        GET /api?action=history_receptions&limit=50&state=done
+        """
+        limit  = int(params.get('limit', 60) or 60)
+        state  = params.get('state', '')   # '', 'done', 'confirmed', 'draft'
+
+        domain = [['picking_type_code', '=', 'incoming']]
+        if state:
+            domain.append(['state', '=', state])
+
+        pickings = odoo_call('stock.picking', 'search_read', [domain], {
+            'fields': ['id', 'name', 'date_done', 'date', 'state',
+                       'origin', 'partner_id', 'move_ids_without_package'],
+            'order':  'date desc',
+            'limit':  limit,
+        })
+
+        # Contar líneas de cada picking
+        for p in (pickings or []):
+            p['line_count'] = len(p.get('move_ids_without_package', []))
+
+        return {'pickings': pickings or []}
+
+    # ── Picking detail: líneas de movimiento ──────────────────────
+    def handle_picking_detail(self, params):
+        """
+        Devuelve el detalle completo de un stock.picking: cabecera + líneas.
+        GET /api?action=picking_detail&id=<picking_id>
+        """
+        picking_id = int(params.get('id', 0) or 0)
+        if not picking_id:
+            return {'error': 'Falta el parámetro id'}
+
+        # Cabecera del picking
+        picks = odoo_call('stock.picking', 'read', [[picking_id]], {
+            'fields': ['id', 'name', 'date_done', 'date', 'state',
+                       'origin', 'partner_id', 'location_dest_id',
+                       'move_ids_without_package']
+        })
+        if not picks:
+            return {'error': 'Recepción no encontrada'}
+        pick = picks[0]
+
+        move_ids = pick.get('move_ids_without_package', [])
+        lines = []
+        if move_ids:
+            moves = odoo_call('stock.move', 'read', [move_ids], {
+                'fields': ['id', 'name', 'product_id', 'product_uom_qty',
+                           'quantity', 'product_uom', 'state']
+            })
+            # Enriquecer con default_code y list_price del template
+            tmpl_ids = []
+            prod_tmpl_map = {}  # product.product id → template id
+            for m in moves:
+                if m.get('product_id'):
+                    pp_id = m['product_id'][0]
+                    tmpl_ids.append(pp_id)
+
+            if tmpl_ids:
+                variants = odoo_call('product.product', 'search_read',
+                    [[['id', 'in', tmpl_ids]]],
+                    {'fields': ['id', 'product_tmpl_id', 'default_code', 'list_price']})
+                prod_tmpl_map = {v['id']: v for v in variants}
+
+            for m in moves:
+                pp_id = m['product_id'][0] if m.get('product_id') else None
+                vdata = prod_tmpl_map.get(pp_id, {})
+                lines.append({
+                    'move_id':      m['id'],
+                    'product_id':   pp_id,
+                    'name':         m.get('name', ''),
+                    'default_code': vdata.get('default_code', ''),
+                    'list_price':   vdata.get('list_price', 0),
+                    'qty_done':     m.get('quantity', 0),
+                    'qty_ordered':  m.get('product_uom_qty', 0),
+                    'uom':          m['product_uom'][1] if m.get('product_uom') else '',
+                    'tickets':      int(m.get('quantity', 1)) or 1,
+                })
+
+        return {'picking': pick, 'lines': lines}
 
     def handle_stock_by_location(self, params):
         """
@@ -626,7 +693,6 @@ if __name__ == '__main__':
     import os
     _base_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(_base_dir)
-    os.makedirs(os.path.join(_base_dir, 'exports'), exist_ok=True)
 
     port = int(os.environ.get("PORT", 8080))
     print(f'\n🔥 Tecnigass – Recepción/Catálogo corriendo en puerto {port}')

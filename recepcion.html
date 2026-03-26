@@ -227,12 +227,72 @@
       <button id="btnPrintExcel" disabled class="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl text-sm font-bold text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:hover:bg-green-600 shadow-elevada btn-trans">
         <i data-lucide="printer" class="w-5 h-5"></i> Exportar Etiquetas
       </button>
+      <button id="btnHistory" class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-xs font-bold text-gray-500 hover:text-primario hover:bg-primario/10 border border-borde btn-trans">
+        <i data-lucide="history" class="w-4 h-4"></i> Ver Historial de Recepciones
+      </button>
       <button id="btnClearAll" class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-xs font-bold text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 btn-trans">
         <i data-lucide="trash-2" class="w-4 h-4"></i> Vaciar Lista
       </button>
     </div>
   </aside>
 
+</div>
+
+<!-- ═══ MODAL HISTORIAL ════════════════════════════════════════════════════ -->
+<div id="historyOverlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] hidden items-center justify-center p-4 opacity-0 transition-opacity duration-200">
+  <div class="w-full max-w-3xl bg-superficie rounded-2xl shadow-elevada border border-borde flex flex-col max-h-[90vh] transform scale-95 transition-transform duration-200" id="historyPanel">
+    <!-- Header -->
+    <div class="p-5 border-b border-borde flex items-center justify-between shrink-0">
+      <div>
+        <h2 class="text-lg font-bold text-texto flex items-center gap-2"><i data-lucide="history" class="w-5 h-5 text-primario"></i> Historial de Recepciones</h2>
+        <p class="text-xs text-gray-500 mt-0.5">Recepciones registradas en Odoo</p>
+      </div>
+      <button id="historyClose" class="p-2 rounded-xl text-gray-400 hover:text-texto hover:bg-borde btn-trans"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <!-- Filtros -->
+    <div class="px-5 py-3 border-b border-borde bg-fondo/50 flex flex-wrap gap-2 shrink-0">
+      <button data-hstate="" class="hist-filter-btn active-filter px-3 py-1 rounded-full text-xs font-bold border btn-trans">Todos</button>
+      <button data-hstate="done" class="hist-filter-btn px-3 py-1 rounded-full text-xs font-bold border btn-trans">Hecho</button>
+      <button data-hstate="confirmed" class="hist-filter-btn px-3 py-1 rounded-full text-xs font-bold border btn-trans">Confirmado</button>
+      <button data-hstate="draft" class="hist-filter-btn px-3 py-1 rounded-full text-xs font-bold border btn-trans">Borrador</button>
+      <button id="histRefresh" class="ml-auto p-1.5 rounded-lg text-gray-400 hover:text-primario btn-trans" title="Recargar"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+    </div>
+    <!-- Lista -->
+    <div class="flex-1 overflow-y-auto" id="historyList">
+      <div class="flex flex-col items-center justify-center p-16 text-gray-400">
+        <i data-lucide="loader-2" class="w-8 h-8 animate-spin text-primario mb-3"></i>
+        <p class="text-sm font-medium">Cargando historial...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL DETALLE RECEPCIÓN ══════════════════════════════════════════════ -->
+<div id="detailOverlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] hidden items-center justify-center p-4 opacity-0 transition-opacity duration-200">
+  <div class="w-full max-w-3xl bg-superficie rounded-2xl shadow-elevada border border-borde flex flex-col max-h-[92vh] transform scale-95 transition-transform duration-200" id="detailPanel">
+    <!-- Header -->
+    <div class="p-5 border-b border-borde flex items-start justify-between shrink-0">
+      <div>
+        <h2 id="detailTitle" class="text-lg font-bold text-texto">Detalle</h2>
+        <p id="detailMeta" class="text-xs text-gray-500 mt-0.5"></p>
+      </div>
+      <button id="detailClose" class="p-2 rounded-xl text-gray-400 hover:text-texto hover:bg-borde btn-trans"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <!-- Tabla editable -->
+    <div class="flex-1 overflow-y-auto p-4" id="detailBody">
+      <div class="flex justify-center p-10"><i data-lucide="loader-2" class="w-8 h-8 animate-spin text-primario"></i></div>
+    </div>
+    <!-- Footer acciones -->
+    <div class="p-4 border-t border-borde bg-fondo/50 flex justify-between items-center gap-3 shrink-0">
+      <p id="detailFooterInfo" class="text-xs text-gray-500"></p>
+      <div class="flex gap-3">
+        <button id="detailClose2" class="px-4 py-2 rounded-xl text-sm font-bold text-gray-600 hover:bg-borde btn-trans">Cerrar</button>
+        <button id="btnDetailExport" class="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold text-white bg-green-600 hover:bg-green-700 shadow-card btn-trans">
+          <i data-lucide="download" class="w-4 h-4"></i> Exportar Excel
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- MODALS OVERLAY -->
@@ -645,6 +705,13 @@ document.getElementById('modalOverlay').addEventListener('mousedown', e => { if(
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
 function openReceiveModal(tmplId) {
+  // --- Feedback visual: borde azul en la tarjeta seleccionada ---
+  document.querySelectorAll('.product-card-selected').forEach(el => {
+    el.classList.remove('product-card-selected', 'ring-2', 'ring-primario', 'ring-offset-2');
+  });
+  const card = document.getElementById(`card-${tmplId}`);
+  if (card) card.classList.add('product-card-selected', 'ring-2', 'ring-primario', 'ring-offset-2');
+
   const prod = _currentProducts.find(p => p.id === tmplId);
   if (!prod) return;
   if (prod.is_kit) openKitModal(prod);
@@ -780,8 +847,23 @@ document.getElementById('btnPrintExcel').addEventListener('click', async () => {
   try {
     const res = await fetch(API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:'export_excel', rows}) });
     const d = await res.json();
-    if (d.error) toast(d.error, 'error', 'x-circle');
-    else toast(`Etiquetas exportadas`, 'success', 'printer');
+    if (d.error) {
+      toast(d.error, 'error', 'x-circle');
+    } else if (d.data) {
+      // Convertir base64 → Blob → descarga automática con nombre fijo 010.xlsx
+      const binary = atob(d.data);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '010.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+      toast(`${d.count} etiquetas listas · descargando 010.xlsx`, 'success', 'printer');
+    }
   } catch(e) { toast('Error al exportar', 'error', 'wifi-off'); }
   finally { btn.disabled=receptionRows.length===0; btn.innerHTML='<i data-lucide="printer" class="w-5 h-5"></i> Exportar Etiquetas'; lucide.createIcons(); }
 });
@@ -805,6 +887,247 @@ function toast(msg, type='info', icon='info') {
   }, 3000);
 }
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+// =============================================================
+// HISTORIAL DE RECEPCIONES
+// =============================================================
+let _histState = '';        // filtro activo
+let _detailLines = [];      // líneas del detalle actual
+let _detailPickInfo = null; // cabecera del picking actual
+
+// --- helpers de modal genérico ---
+function openOverlay(overlayId, panelId) {
+  const ov = document.getElementById(overlayId);
+  const pan = document.getElementById(panelId);
+  ov.classList.remove('hidden'); ov.classList.add('flex');
+  pan.classList.remove('scale-95');
+  requestAnimationFrame(() => ov.classList.remove('opacity-0'));
+  lucide.createIcons({ root: ov });
+}
+function closeOverlay(overlayId, panelId) {
+  const ov = document.getElementById(overlayId);
+  ov.classList.add('opacity-0');
+  document.getElementById(panelId).classList.add('scale-95');
+  setTimeout(() => { ov.classList.add('hidden'); ov.classList.remove('flex'); }, 200);
+}
+
+// --- Badges de estado ---
+function stateBadge(state) {
+  const map = {
+    done:      ['✔ Hecho',       'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800'],
+    assigned:  ['↗ Listo',       'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 border-cyan-200 dark:border-cyan-800'],
+    confirmed: ['⏳ Confirmado', 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800'],
+    draft:     ['✎ Borrador',    'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700'],
+    cancel:    ['✕ Cancelado',   'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800'],
+  };
+  const [label, cls] = map[state] || ['? '+state, 'bg-gray-100 text-gray-500 border-gray-200'];
+  return `<span class="text-[10px] font-black px-2 py-0.5 rounded-full border ${cls}">${label}</span>`;
+}
+
+// --- Formatear fecha Odoo ---
+function fmtDate(d) {
+  if (!d) return '—';
+  try {
+    const dt = new Date(d.replace(' ', 'T') + (d.includes('T') ? '' : 'Z'));
+    return dt.toLocaleDateString('es-PE', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
+  } catch { return d; }
+}
+
+// --- Cargar historial ---
+async function loadHistory() {
+  const list = document.getElementById('historyList');
+  list.innerHTML = `<div class="flex flex-col items-center justify-center p-16 text-gray-400"><i data-lucide="loader-2" class="w-8 h-8 animate-spin text-primario mb-3"></i><p class="text-sm">Cargando...</p></div>`;
+  lucide.createIcons({ root: list });
+  try {
+    const r = await fetch(`${API}?action=history_receptions&state=${encodeURIComponent(_histState)}&limit=60`);
+    const d = await r.json();
+    if (d.error) { list.innerHTML = `<p class="text-center p-10 text-red-500 font-bold">${esc(d.error)}</p>`; return; }
+    const picks = d.pickings || [];
+    if (!picks.length) {
+      list.innerHTML = `<div class="flex flex-col items-center p-16 text-gray-400"><i data-lucide="inbox" class="w-12 h-12 opacity-40 mb-3"></i><p class="font-bold">Sin recepciones</p></div>`;
+      lucide.createIcons({ root: list }); return;
+    }
+    list.innerHTML = picks.map(p => {
+      const fecha = fmtDate(p.date_done || p.date);
+      const origen = p.origin ? `<span class="text-[10px] text-gray-400 ml-1">· ${esc(p.origin)}</span>` : '';
+      const proveedor = Array.isArray(p.partner_id) ? `<span class="text-[10px] text-gray-500">${esc(p.partner_id[1])}</span>` : '';
+      return `
+      <div class="flex items-center gap-3 px-5 py-3.5 hover:bg-fondo/70 cursor-pointer border-b border-borde group btn-trans" onclick="openPickingDetail(${p.id})">
+        <div class="w-9 h-9 rounded-xl bg-primario/10 text-primario flex items-center justify-center shrink-0">
+          <i data-lucide="package-check" class="w-4 h-4"></i>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-sm font-black text-texto">${esc(p.name)}</span>
+            ${origen}
+            ${stateBadge(p.state)}
+          </div>
+          <div class="flex items-center gap-2 mt-0.5">
+            <span class="text-[11px] text-gray-400">${fecha}</span>
+            ${proveedor}
+            <span class="text-[10px] bg-slate-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400 px-1.5 py-0.5 rounded font-bold">${p.line_count} ítem(s)</span>
+          </div>
+        </div>
+        <i data-lucide="chevron-right" class="w-4 h-4 text-gray-400 group-hover:text-primario btn-trans shrink-0"></i>
+      </div>`;
+    }).join('');
+    lucide.createIcons({ root: list });
+  } catch(e) {
+    list.innerHTML = `<p class="text-center p-10 text-red-500">Error: ${esc(e.message)}</p>`;
+  }
+}
+
+// --- Abrir detalle de un picking ---
+async function openPickingDetail(pickingId) {
+  openOverlay('detailOverlay', 'detailPanel');
+  document.getElementById('detailTitle').textContent = 'Cargando...';
+  document.getElementById('detailMeta').textContent = '';
+  document.getElementById('detailFooterInfo').textContent = '';
+  document.getElementById('detailBody').innerHTML = `<div class="flex justify-center p-10"><i data-lucide="loader-2" class="w-8 h-8 animate-spin text-primario"></i></div>`;
+  lucide.createIcons({ root: document.getElementById('detailBody') });
+  try {
+    const r = await fetch(`${API}?action=picking_detail&id=${pickingId}`);
+    const d = await r.json();
+    if (d.error) {
+      document.getElementById('detailBody').innerHTML = `<p class="text-red-500 p-8 text-center font-bold">${esc(d.error)}</p>`;
+      return;
+    }
+    const p = d.picking;
+    _detailLines = (d.lines || []).map((l, i) => ({ ...l, _idx: i }));
+    _detailPickInfo = p;
+
+    document.getElementById('detailTitle').textContent = p.name || 'Detalle';
+    const destName = Array.isArray(p.location_dest_id) ? p.location_dest_id[1] : '';
+    document.getElementById('detailMeta').textContent = `${fmtDate(p.date_done || p.date)}  ·  Destino: ${destName}`;
+    document.getElementById('detailFooterInfo').textContent = `${_detailLines.length} producto(s)`;
+
+    if (!_detailLines.length) {
+      document.getElementById('detailBody').innerHTML = `<div class="flex flex-col items-center p-10 text-gray-400"><i data-lucide="inbox" class="w-10 h-10 opacity-40 mb-2"></i><p class="font-bold">Sin líneas</p></div>`;
+      lucide.createIcons({ root: document.getElementById('detailBody') }); return;
+    }
+
+    renderDetailTable();
+  } catch(e) {
+    document.getElementById('detailBody').innerHTML = `<p class="text-red-500 p-8 text-center">${esc(e.message)}</p>`;
+  }
+}
+
+function renderDetailTable() {
+  const body = document.getElementById('detailBody');
+  body.innerHTML = `
+  <table class="w-full text-xs">
+    <thead class="sticky top-0 bg-superficie z-10">
+      <tr class="border-b-2 border-borde">
+        <th class="text-left py-2 px-3 font-black text-gray-400 uppercase tracking-widest">Código</th>
+        <th class="text-left py-2 px-3 font-black text-gray-400 uppercase tracking-widest">Producto</th>
+        <th class="text-center py-2 px-3 font-black text-gray-400 uppercase tracking-widest w-20">Cant.</th>
+        <th class="text-center py-2 px-3 font-black text-orange-400 uppercase tracking-widest w-24">Tickets 🏷</th>
+        <th class="text-right py-2 px-3 font-black text-gray-400 uppercase tracking-widest">Precio</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${_detailLines.map((l, i) => `
+      <tr class="border-b border-borde hover:bg-fondo/50 group">
+        <td class="py-2 px-3 font-bold text-primario">${esc(l.default_code||'—')}</td>
+        <td class="py-2 px-3 text-texto font-medium leading-tight max-w-[180px]">
+          <div class="truncate" title="${esc(l.name)}">${esc(l.name)}</div>
+        </td>
+        <td class="py-2 px-3">
+          <input type="number" min="0" step="any" value="${parseFloat(l.qty_done||l.qty_ordered||0).toFixed(2)}"
+            onchange="updateDetailLine(${i}, 'qty_done', this.value)"
+            class="w-full bg-fondo border border-borde rounded-lg px-2 py-1 text-xs font-bold text-center outline-none focus:border-primario focus:ring-1 focus:ring-primario btn-trans"/>
+        </td>
+        <td class="py-2 px-3">
+          <input type="number" min="0" value="${l.tickets||1}"
+            onchange="updateDetailLine(${i}, 'tickets', this.value)"
+            class="w-full bg-orange-50 dark:bg-orange-900/20 text-orange-600 border border-orange-200 dark:border-orange-900/50 rounded-lg px-2 py-1 text-xs font-bold text-center outline-none focus:border-orange-500 btn-trans"/>
+        </td>
+        <td class="py-2 px-3 text-right font-bold text-texto">S/ ${parseFloat(l.list_price||0).toFixed(2)}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+  lucide.createIcons({ root: body });
+}
+
+function updateDetailLine(idx, field, value) {
+  if (_detailLines[idx]) {
+    _detailLines[idx][field] = parseFloat(value) || 0;
+  }
+}
+
+// --- Exportar desde detalle ---
+document.getElementById('btnDetailExport').addEventListener('click', async () => {
+  if (!_detailLines.length) return;
+  const btn = document.getElementById('btnDetailExport');
+  btn.disabled = true;
+  btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Exportando...';
+  lucide.createIcons({ root: btn });
+
+  const rows = _detailLines.map(l => ({
+    name:         l.name || '',
+    default_code: l.default_code || '',
+    list_price:   l.list_price || 0,
+    tickets:      l.tickets || 1,
+    qty:          l.qty_done || 0,
+  }));
+
+  try {
+    const res = await fetch(API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:'export_excel', rows}) });
+    const d = await res.json();
+    if (d.error) { toast(d.error, 'error', 'x-circle'); return; }
+    if (d.data) {
+      const binary = atob(d.data);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = '010.xlsx';
+      document.body.appendChild(a); a.click();
+      setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+      toast(`${d.count} etiquetas · descargando 010.xlsx`, 'success', 'printer');
+    }
+  } catch(e) { toast('Error al exportar', 'error', 'wifi-off'); }
+  finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i data-lucide="download" class="w-4 h-4"></i> Exportar Excel';
+    lucide.createIcons({ root: btn });
+  }
+});
+
+// --- Controles de historial ---
+document.getElementById('btnHistory').addEventListener('click', () => {
+  openOverlay('historyOverlay', 'historyPanel');
+  loadHistory();
+});
+document.getElementById('historyClose').addEventListener('click', () => closeOverlay('historyOverlay', 'historyPanel'));
+document.getElementById('historyOverlay').addEventListener('mousedown', e => { if (e.target.id === 'historyOverlay') closeOverlay('historyOverlay', 'historyPanel'); });
+document.getElementById('histRefresh').addEventListener('click', loadHistory);
+
+document.querySelectorAll('.hist-filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.hist-filter-btn').forEach(b => {
+      b.classList.remove('active-filter', 'bg-primario', 'text-white', 'border-primario');
+      b.classList.add('text-gray-500', 'border-borde');
+    });
+    btn.classList.add('active-filter', 'bg-primario', 'text-white', 'border-primario');
+    btn.classList.remove('text-gray-500', 'border-borde');
+    _histState = btn.dataset.hstate;
+    loadHistory();
+  });
+});
+// Estilo inicial del filtro activo
+document.querySelector('.hist-filter-btn.active-filter')?.classList.add('bg-primario','text-white','border-primario');
+
+document.getElementById('detailClose').addEventListener('click', () => closeOverlay('detailOverlay', 'detailPanel'));
+document.getElementById('detailClose2').addEventListener('click', () => closeOverlay('detailOverlay', 'detailPanel'));
+document.getElementById('detailOverlay').addEventListener('mousedown', e => { if (e.target.id === 'detailOverlay') closeOverlay('detailOverlay', 'detailPanel'); });
+
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  closeOverlay('detailOverlay', 'detailPanel');
+  closeOverlay('historyOverlay', 'historyPanel');
+});
 </script>
 </body>
 </html>
