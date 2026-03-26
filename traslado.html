@@ -154,6 +154,10 @@
       <button id="btnTransfer" disabled class="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl text-sm font-bold text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg btn-trans">
         <i data-lucide="arrow-right-left" class="w-5 h-5"></i> Trasladar en Odoo
       </button>
+      <button id="btnShowHistory" onclick="openHistoryModal()"
+        class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-xs font-bold text-purple-400 hover:text-white hover:bg-purple-600 border border-purple-800 btn-trans">
+        <i data-lucide="clock" class="w-4 h-4"></i> Ver Historial de Traslados
+      </button>
       <button id="btnClearAll" class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-xs font-bold text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 btn-trans">
         <i data-lucide="trash-2" class="w-4 h-4"></i> Vaciar Lista
       </button>
@@ -355,6 +359,10 @@ function renderGrid(products) {
     return `
     <div class="bg-[var(--color-superficie)] rounded-xl border border-[var(--color-borde)] shadow-sm hover:shadow-lg hover:-translate-y-1 overflow-hidden flex flex-col cursor-pointer btn-trans animar-entrada relative" onclick="openModal(${p.id})" id="card-${p.id}">
       ${isKit?`<div class="absolute top-2 left-2 bg-purple-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1"><i data-lucide="blocks" class="w-3 h-3"></i> KIT</div>`:''}
+      <a href="productos.html?edit=${p.id}" onclick="event.stopPropagation()" title="Editar producto"
+        class="absolute top-2 right-2 z-10 bg-slate-700/80 hover:bg-purple-600 text-gray-300 hover:text-white p-1.5 rounded-lg btn-trans shadow">
+        <i data-lucide="pencil" class="w-3 h-3"></i>
+      </a>
       <div class="h-28 bg-white dark:bg-slate-800 p-2 flex items-center justify-center">${img}</div>
       <div class="p-3 flex-1 flex flex-col">
         <div class="text-[10px] font-black text-purple-600 dark:text-purple-400 tracking-widest uppercase mb-1">${code}</div>
@@ -586,5 +594,201 @@ function toast(msg, type='info', icon='info') {
 }
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 </script>
+
+<!-- ══════════════════ MODAL HISTORIAL TRASLADOS ══════════════ -->
+<div id="historyModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+  <div class="bg-[var(--color-superficie)] rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col border border-[var(--color-borde)] shadow-2xl">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-[var(--color-borde)]">
+      <div class="flex items-center gap-2 font-bold text-[var(--color-texto)]">
+        <i data-lucide="clock" class="w-5 h-5 text-purple-400"></i>
+        Historial de Traslados
+      </div>
+      <div class="flex items-center gap-2">
+        <select id="histStateFilter" onchange="loadHistory()"
+          class="text-xs rounded-lg px-2 py-1 border border-[var(--color-borde)] bg-[var(--color-fondo)] text-[var(--color-texto)]">
+          <option value="">Todos</option>
+          <option value="draft">Borrador</option>
+          <option value="confirmed">Confirmado</option>
+          <option value="assigned">Listo</option>
+          <option value="done">Realizado</option>
+          <option value="cancel">Cancelado</option>
+        </select>
+        <button onclick="document.getElementById('historyModal').classList.add('hidden');document.getElementById('historyModal').classList.remove('flex');"
+          class="text-gray-400 hover:text-[var(--color-texto)] p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+    </div>
+    <div id="historyList" class="flex-1 overflow-y-auto p-4 space-y-2"></div>
+  </div>
+</div>
+
+<!-- ══════════════════ MODAL DETALLE TRASLADO ═════════════════ -->
+<div id="histDetailModal" class="fixed inset-0 z-60 hidden items-center justify-center bg-black/70 backdrop-blur-sm p-4" style="z-index:60">
+  <div class="bg-[var(--color-superficie)] rounded-2xl w-full max-w-xl max-h-[85vh] flex flex-col border border-[var(--color-borde)] shadow-2xl">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-[var(--color-borde)]">
+      <span id="histDetailTitle" class="font-bold text-[var(--color-texto)]"></span>
+      <button onclick="document.getElementById('histDetailModal').classList.add('hidden');document.getElementById('histDetailModal').classList.remove('flex');"
+        class="text-gray-400 hover:text-[var(--color-texto)] p-1">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <div id="histDetailBody" class="flex-1 overflow-y-auto p-4"></div>
+    <div class="px-5 py-4 border-t border-[var(--color-borde)] flex gap-3">
+      <button id="btnRevertPicking" onclick="revertPickingAction()"
+        class="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold py-2 px-4 rounded-xl btn-trans">
+        <i data-lucide="undo-2" class="w-4 h-4"></i>
+        <span id="revertBtnTxt">Revertir</span>
+      </button>
+      <button onclick="document.getElementById('histDetailModal').classList.add('hidden');document.getElementById('histDetailModal').classList.remove('flex');"
+        class="flex-1 border border-[var(--color-borde)] text-gray-400 hover:text-[var(--color-texto)] text-sm font-semibold py-2 px-4 rounded-xl btn-trans">
+        Cerrar
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── HISTORIAL TRASLADOS ────────────────────────────────────────
+let _currentPickingId = null;
+let _currentPickingState = null;
+
+async function openHistoryModal() {
+  document.getElementById('historyModal').classList.remove('hidden');
+  document.getElementById('historyModal').classList.add('flex');
+  lucide.createIcons({ root: document.getElementById('historyModal') });
+  await loadHistory();
+}
+
+async function loadHistory() {
+  const state = document.getElementById('histStateFilter').value;
+  const list  = document.getElementById('historyList');
+  list.innerHTML = `<div class="text-center text-gray-400 py-8 text-sm">Cargando...</div>`;
+  try {
+    const r = await fetch(`${API}?action=history_transfers&limit=80&state=${state}`);
+    const d = await r.json();
+    const pickings = d.pickings || [];
+    if (!pickings.length) {
+      list.innerHTML = `<div class="text-center text-gray-400 py-8 text-sm">Sin traslados encontrados</div>`;
+      return;
+    }
+    const stateColor = { draft:'bg-gray-500/20 text-gray-400', confirmed:'bg-blue-500/20 text-blue-400',
+      assigned:'bg-yellow-500/20 text-yellow-400', done:'bg-green-500/20 text-green-400',
+      cancel:'bg-red-500/20 text-red-400' };
+    const stateLabel = { draft:'Borrador', confirmed:'Confirmado', assigned:'Listo',
+      done:'Realizado', cancel:'Cancelado' };
+
+    list.innerHTML = pickings.map(p => {
+      const dateStr = (p.date_done || p.date || '').substring(0,10);
+      const sc = stateColor[p.state] || 'bg-gray-500/20 text-gray-400';
+      const sl = stateLabel[p.state] || p.state;
+      const src  = Array.isArray(p.location_id) ? p.location_id[1] : (p.location_id || '');
+      const dest = Array.isArray(p.location_dest_id) ? p.location_dest_id[1] : (p.location_dest_id || '');
+      return `<div class="flex items-center justify-between p-3 bg-[var(--color-fondo)] rounded-xl border border-[var(--color-borde)] hover:border-purple-500 btn-trans cursor-pointer"
+                   onclick="openPickingDetail(${p.id},'${esc(p.name)}','${p.state}')">
+        <div class="flex flex-col gap-0.5">
+          <div class="font-bold text-sm text-[var(--color-texto)]">${esc(p.name)}</div>
+          <div class="text-[10px] text-gray-400 flex items-center gap-1">
+            <i data-lucide="move-right" class="w-3 h-3"></i>
+            ${esc(src.replace('PUN/',''))} → ${esc(dest.replace('PUN/',''))}
+          </div>
+          <div class="text-[10px] text-gray-500">${dateStr} · ${p.line_count||0} líneas</div>
+        </div>
+        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${sc}">${sl}</span>
+      </div>`;
+    }).join('');
+    lucide.createIcons({ root: list });
+  } catch(e) {
+    list.innerHTML = `<div class="text-red-400 text-sm p-4">Error: ${e.message}</div>`;
+  }
+}
+
+async function openPickingDetail(pickingId, pickingName, state) {
+  _currentPickingId    = pickingId;
+  _currentPickingState = state;
+  document.getElementById('histDetailTitle').textContent = pickingName;
+
+  const body = document.getElementById('histDetailBody');
+  body.innerHTML = `<div class="text-center text-gray-400 py-8 text-sm">Cargando líneas...</div>`;
+
+  document.getElementById('histDetailModal').classList.remove('hidden');
+  document.getElementById('histDetailModal').classList.add('flex');
+
+  // Texto del botón según estado
+  const btnTxt = document.getElementById('revertBtnTxt');
+  const btnRev = document.getElementById('btnRevertPicking');
+  if (state === 'done') {
+    btnTxt.textContent = 'Crear retorno';
+    btnRev.classList.remove('hidden');
+  } else if (['draft','confirmed','assigned'].includes(state)) {
+    btnTxt.textContent = 'Cancelar traslado';
+    btnRev.classList.remove('hidden');
+  } else {
+    btnRev.classList.add('hidden');
+  }
+  lucide.createIcons({ root: document.getElementById('histDetailModal') });
+
+  try {
+    const r = await fetch(`${API}?action=picking_detail&id=${pickingId}`);
+    const d = await r.json();
+    if (d.error) { body.innerHTML = `<div class="text-red-400 p-4">${d.error}</div>`; return; }
+
+    const moves = d.moves || [];
+    body.innerHTML = moves.length
+      ? `<div class="space-y-2">
+          ${moves.map(m => `
+            <div class="flex items-center justify-between p-3 bg-[var(--color-fondo)] rounded-xl border border-[var(--color-borde)]">
+              <div>
+                <div class="font-bold text-sm text-[var(--color-texto)]">${esc(m.product_name||'')}</div>
+                <div class="text-[10px] text-gray-400">${esc(m.default_code||'')} · ${esc(m.uom||'')}</div>
+              </div>
+              <div class="text-lg font-black text-purple-400">${parseFloat(m.quantity||0).toFixed(0)}</div>
+            </div>`).join('')}
+        </div>`
+      : `<div class="text-gray-400 text-sm text-center py-8">Sin líneas de movimiento</div>`;
+  } catch(e) {
+    body.innerHTML = `<div class="text-red-400 p-4">${e.message}</div>`;
+  }
+}
+
+async function revertPickingAction() {
+  if (!_currentPickingId) return;
+  const label = _currentPickingState === 'done' ? 'crear un retorno' : 'cancelar este traslado';
+  if (!confirm(`¿Confirmas ${label}? Esta acción no se puede deshacer fácilmente.`)) return;
+
+  const btn = document.getElementById('btnRevertPicking');
+  btn.disabled = true;
+  btn.innerHTML = `<svg class="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+  </svg> Procesando...`;
+
+  try {
+    const r = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'revert_picking', id: _currentPickingId }),
+    });
+    const d = await r.json();
+    if (d.error) {
+      toast(d.error, 'error', 'alert-circle');
+    } else {
+      const msg = d.action === 'returned'
+        ? `Retorno creado para ${d.name}`
+        : `Traslado ${d.name} cancelado`;
+      toast(msg, 'success', 'check-circle');
+      document.getElementById('histDetailModal').classList.add('hidden');
+      document.getElementById('histDetailModal').classList.remove('flex');
+      await loadHistory();
+    }
+  } catch(e) {
+    toast('Error: ' + e.message, 'error', 'alert-circle');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<i data-lucide="undo-2" class="w-4 h-4"></i><span id="revertBtnTxt">Revertir</span>`;
+    lucide.createIcons({ root: btn });
+  }
+}
+</script>
 </body>
 </html>
+

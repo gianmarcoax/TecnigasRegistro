@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Productos — Tecnigass</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primario: '#3b82f6',
+            fondo:    { DEFAULT: '#0f172a', 100: '#1e293b' },
+            texto:    { DEFAULT: '#f1f5f9', muted: '#94a3b8' },
+            borde:    '#334155',
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body { background:#0f172a; color:#f1f5f9; font-family:'Inter',sans-serif; }
+    .btn-trans { transition:.2s all; }
+    .card-prod { transition:.2s all; }
+    .card-prod:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,.4); }
+    .spinner { animation:spin 1s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .modal-bg { backdrop-filter:blur(4px); }
+    input, select, textarea {
+      background:#1e293b; border:1px solid #334155; color:#f1f5f9;
+      border-radius:.5rem; padding:.5rem .75rem; width:100%;
+      transition:.15s border-color;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline:none; border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.2);
+    }
+    label { font-size:.75rem; font-weight:600; color:#94a3b8; margin-bottom:.25rem; display:block; }
+    .field-group { display:flex; flex-direction:column; gap:.25rem; }
+    .img-drop { border:2px dashed #334155; border-radius:.75rem; padding:2rem;
+                display:flex; flex-direction:column; align-items:center; gap:.5rem;
+                cursor:pointer; transition:.2s border-color; }
+    .img-drop:hover { border-color:#3b82f6; }
+    .tag-estado { font-size:.65rem; font-weight:700; padding:.2rem .5rem;
+                  border-radius:9999px; text-transform:uppercase; letter-spacing:.05em; }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+</head>
+<body class="min-h-screen">
+
+<!-- ──── HEADER ──────────────────────────────────────────────── -->
+<header class="sticky top-0 z-40 bg-fondo/95 backdrop-blur border-b border-borde px-4 py-3 flex items-center gap-3">
+  <a href="dashboard.html" class="text-texto-muted hover:text-texto btn-trans">
+    <i data-lucide="arrow-left" class="w-5 h-5"></i>
+  </a>
+  <div class="flex items-center gap-2 flex-1">
+    <i data-lucide="package" class="w-5 h-5 text-primario"></i>
+    <span class="font-black text-lg tracking-tight">Productos</span>
+    <span class="text-texto-muted text-sm font-medium">Tecnigass</span>
+  </div>
+  <button id="btnNewProduct"
+    class="flex items-center gap-2 bg-primario hover:bg-blue-600 text-white font-bold text-sm py-2 px-4 rounded-xl btn-trans shadow-lg">
+    <i data-lucide="plus" class="w-4 h-4"></i>
+    <span class="hidden sm:inline">Nuevo Producto</span>
+  </button>
+</header>
+
+<!-- ──── BÚSQUEDA ─────────────────────────────────────────────── -->
+<div class="px-4 pt-4 pb-2 flex flex-col sm:flex-row gap-3">
+  <div class="relative flex-1">
+    <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-texto-muted pointer-events-none"></i>
+    <input id="searchInput" type="text" placeholder="Buscar por nombre o código..."
+      class="pl-9" style="border-radius:.75rem;" onkeydown="if(event.key==='Enter')doSearch()"/>
+  </div>
+  <div class="relative w-full sm:w-72">
+    <input id="categInput" list="categList" placeholder="Categoría..."
+      style="border-radius:.75rem;" onchange="doSearch()"/>
+    <datalist id="categList"></datalist>
+  </div>
+  <button onclick="doSearch()"
+    class="flex items-center gap-2 bg-primario hover:bg-blue-600 text-white font-bold text-sm py-2 px-4 rounded-xl btn-trans flex-shrink-0">
+    <i data-lucide="search" class="w-4 h-4"></i>
+    <span>Buscar</span>
+  </button>
+</div>
+
+<!-- Meta resultados -->
+<div id="resultsMeta" class="px-4 py-1 text-xs text-texto-muted"></div>
+
+<!-- ──── GRILLA ───────────────────────────────────────────────── -->
+<div id="resultsArea" class="p-4 min-h-[300px]">
+  <div class="flex items-center gap-2 text-texto-muted text-sm mt-8 justify-center">
+    <i data-lucide="search" class="w-4 h-4"></i>
+    <span>Busca un producto para comenzar</span>
+  </div>
+</div>
+
+<!-- ──── MODAL AGREGAR / EDITAR PRODUCTO ─────────────────────── -->
+<div id="productModal" class="fixed inset-0 z-50 hidden items-center justify-center modal-bg bg-black/60">
+  <div class="bg-fondo-100 rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto border border-borde">
+
+    <!-- Header modal -->
+    <div class="sticky top-0 bg-fondo-100 flex items-center justify-between px-5 py-4 border-b border-borde rounded-t-2xl z-10">
+      <div class="flex items-center gap-2">
+        <i id="modalIcon" data-lucide="plus-circle" class="w-5 h-5 text-primario"></i>
+        <span id="modalTitle" class="font-black text-base">Nuevo Producto</span>
+      </div>
+      <button onclick="closeModal()" class="text-texto-muted hover:text-texto btn-trans">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+
+    <form id="productForm" class="p-5 flex flex-col gap-4" onsubmit="return false;">
+      <input type="hidden" id="editProductId"/>
+
+      <!-- Foto -->
+      <div class="field-group">
+        <label>Foto del producto <span class="text-texto-muted">(opcional)</span></label>
+        <div id="imgDropZone" class="img-drop" onclick="document.getElementById('imgFileInput').click()">
+          <img id="imgPreview" src="" alt="" class="w-24 h-24 object-contain rounded-xl hidden"/>
+          <div id="imgPlaceholder" class="flex flex-col items-center gap-1 text-texto-muted">
+            <i data-lucide="image-plus" class="w-8 h-8"></i>
+            <span class="text-xs">Click para subir imagen</span>
+          </div>
+        </div>
+        <input type="file" id="imgFileInput" accept="image/*" class="hidden" onchange="handleImageUpload(this)"/>
+      </div>
+
+      <!-- Nombre -->
+      <div class="field-group">
+        <label>Nombre del producto <span class="text-red-400">*</span></label>
+        <input type="text" id="prdName" placeholder="Ej: TAPER TERMICO POLIMES 1L" required/>
+      </div>
+
+      <!-- Categoría -->
+      <div class="field-group">
+        <label>Categoría <span class="text-red-400">*</span></label>
+        <select id="prdCateg" required onchange="onCategChange()">
+          <option value="">— Seleccionar categoría —</option>
+        </select>
+      </div>
+
+      <!-- Referencia y Código de barras (siempre iguales) -->
+      <div class="field-group">
+        <div class="flex items-center justify-between">
+          <label>Referencia / Código de barras <span class="text-red-400">*</span></label>
+          <button type="button" id="btnAutoCode"
+            class="text-xs text-primario hover:text-blue-400 btn-trans flex items-center gap-1"
+            onclick="generateAutoCode()">
+            <i data-lucide="refresh-cw" class="w-3 h-3"></i> Auto-generar
+          </button>
+        </div>
+        <input type="text" id="prdCode" placeholder="Ej: 003031001" required
+          oninput="syncCodeFields()" maxlength="20"/>
+        <p class="text-xs text-texto-muted mt-1">
+          Referencia interna y código de barras siempre son iguales y únicos en Odoo.
+        </p>
+      </div>
+
+      <!-- Precio de venta -->
+      <div class="field-group">
+        <label>Precio de venta (S/) <span class="text-red-400">*</span></label>
+        <input type="number" id="prdPrice" placeholder="0.00" min="0" step="0.01" required/>
+      </div>
+
+      <!-- Datos fijos (informativos) -->
+      <div class="bg-fondo rounded-xl p-3 flex flex-col gap-1 border border-borde">
+        <p class="text-xs font-bold text-texto-muted uppercase tracking-wider mb-1">Configuración fija (Odoo)</p>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <div class="flex items-center gap-1.5 text-green-400">
+            <i data-lucide="check-circle" class="w-3 h-3"></i> Tipo: Bienes
+          </div>
+          <div class="flex items-center gap-1.5 text-green-400">
+            <i data-lucide="check-circle" class="w-3 h-3"></i> Inventario activo
+          </div>
+          <div class="flex items-center gap-1.5 text-green-400">
+            <i data-lucide="check-circle" class="w-3 h-3"></i> Ventas activo
+          </div>
+          <div class="flex items-center gap-1.5 text-green-400">
+            <i data-lucide="check-circle" class="w-3 h-3"></i> Compras activo
+          </div>
+          <div class="flex items-center gap-1.5 text-green-400">
+            <i data-lucide="check-circle" class="w-3 h-3"></i> Punto de Venta
+          </div>
+        </div>
+      </div>
+
+      <!-- Error / feedback -->
+      <div id="modalError" class="hidden text-sm text-red-400 bg-red-900/20 border border-red-800 rounded-xl px-3 py-2"></div>
+      <div id="modalSuccess" class="hidden text-sm text-green-400 bg-green-900/20 border border-green-800 rounded-xl px-3 py-2"></div>
+
+      <!-- Botones -->
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="closeModal()"
+          class="flex-1 border border-borde text-texto-muted hover:text-texto py-2.5 rounded-xl btn-trans font-semibold text-sm">
+          Cancelar
+        </button>
+        <button type="button" id="btnSaveProduct" onclick="saveProduct()"
+          class="flex-1 bg-primario hover:bg-blue-600 text-white py-2.5 rounded-xl btn-trans font-bold text-sm flex items-center justify-center gap-2">
+          <i data-lucide="save" class="w-4 h-4"></i>
+          <span id="btnSaveTxt">Guardar en Odoo</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ──── SCRIPT ───────────────────────────────────────────────── -->
+<script>
+  const API = '/api';
+  let _catMap = {};       // complete_name -> {id, complete_name}
+  let _imgBase64 = null;  // foto a subir
+
+  // ── INIT ────────────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', async () => {
+    lucide.createIcons();
+    await loadCategories();  // esperar para que el select esté listo
+    document.getElementById('btnNewProduct').addEventListener('click', openNewModal);
+
+    // Auto-abrir modal de edición si viene de ?edit=<tmpl_id>
+    const params = new URLSearchParams(window.location.search);
+    const editId = params.get('edit');
+    if (editId && !isNaN(parseInt(editId))) {
+      await openEditModal(parseInt(editId));
+    }
+  });
+
+  // ── CATEGORÍAS ──────────────────────────────────────────────
+  async function loadCategories() {
+    try {
+      const r = await fetch(`${API}?action=categories`);
+      const d = await r.json();
+      const dl  = document.getElementById('categList');
+      const sel = document.getElementById('prdCateg');
+      dl.innerHTML = '';
+      sel.innerHTML = '<option value="">— Seleccionar categoría —</option>';
+      (d.categories || []).forEach(c => {
+        _catMap[c.complete_name] = c;
+        // datalist
+        const opt = document.createElement('option');
+        opt.value = c.complete_name;
+        dl.appendChild(opt);
+        // select del modal
+        const sopt = document.createElement('option');
+        sopt.value = c.id;
+        sopt.dataset.name = c.complete_name;
+        sopt.textContent = c.complete_name;
+        sel.appendChild(sopt);
+      });
+    } catch(e) { console.error('loadCategories', e); }
+  }
+
+  // ── BÚSQUEDA ────────────────────────────────────────────────
+  async function doSearch() {
+    const q       = document.getElementById('searchInput').value.trim();
+    const catName = document.getElementById('categInput').value.trim();
+    const cat     = (_catMap[catName] || {}).id || '';
+    const meta    = document.getElementById('resultsMeta');
+    const area    = document.getElementById('resultsArea');
+
+    area.innerHTML = `<div class="flex items-center justify-center gap-2 text-texto-muted py-12">
+      <svg class="spinner w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+      </svg>
+      <span>Buscando...</span>
+    </div>`;
+
+    try {
+      const r = await fetch(`${API}?action=search&q=${encodeURIComponent(q)}&categ=${cat}&limit=80&fields=id,name,default_code,list_price,categ_id,image_128`);
+      const d = await r.json();
+      const prods = d.products || [];
+      meta.textContent = `${prods.length} resultado(s)`;
+      renderGrid(prods, area);
+    } catch(e) {
+      area.innerHTML = `<div class="text-red-400 text-sm p-4">Error: ${e.message}</div>`;
+    }
+  }
+
+  // ── RENDER GRILLA ───────────────────────────────────────────
+  function esc(s) { return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  function renderGrid(prods, area) {
+    if (!prods.length) {
+      area.innerHTML = `<div class="text-texto-muted text-sm flex items-center gap-2 justify-center py-12">
+        <i data-lucide="package-open" class="w-5 h-5"></i> Sin resultados
+      </div>`;
+      lucide.createIcons();
+      return;
+    }
+
+    const cards = prods.map(p => {
+      const code  = esc(p.default_code || '');
+      const img   = p.image_128
+        ? `<img src="data:image/png;base64,${p.image_128}" class="w-full h-28 object-contain"/>`
+        : `<div class="w-full h-28 flex items-center justify-center text-texto-muted/30">
+             <i data-lucide="image-off" class="w-10 h-10"></i>
+           </div>`;
+      const price = p.list_price != null ? `S/ ${parseFloat(p.list_price).toFixed(2)}` : '';
+
+      return `<div id="pcard-${p.id}"
+        class="card-prod bg-fondo-100 border border-borde rounded-2xl overflow-hidden flex flex-col relative">
+        <!-- botón editar -->
+        <button onclick="openEditModal(${p.id})"
+          class="absolute top-2 right-2 z-10 bg-fondo/80 hover:bg-primario text-texto-muted hover:text-white p-1.5 rounded-lg btn-trans shadow">
+          <i data-lucide="pencil" class="w-3 h-3"></i>
+        </button>
+        <div class="bg-white/5 p-2">${img}</div>
+        <div class="p-3 flex-1 flex flex-col">
+          <div class="text-[10px] font-black text-primario tracking-widest uppercase mb-1">${code}</div>
+          <div class="text-xs font-bold text-texto leading-snug flex-1">${esc(p.name)}</div>
+          <div class="text-sm font-bold text-texto mt-2">${price}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    area.innerHTML = `<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">${cards}</div>`;
+    lucide.createIcons();
+  }
+
+  // ── ABRIR MODAL NUEVO ───────────────────────────────────────
+  function openNewModal() {
+    resetForm();
+    document.getElementById('modalTitle').textContent = 'Nuevo Producto';
+    document.getElementById('modalIcon').setAttribute('data-lucide','plus-circle');
+    document.getElementById('btnSaveTxt').textContent = 'Crear en Odoo';
+    document.getElementById('productModal').classList.remove('hidden');
+    document.getElementById('productModal').classList.add('flex');
+    lucide.createIcons();
+  }
+
+  // ── ABRIR MODAL EDITAR ──────────────────────────────────────
+  async function openEditModal(tmplId) {
+    resetForm();
+    document.getElementById('modalTitle').textContent = 'Editar Producto';
+    document.getElementById('modalIcon').setAttribute('data-lucide','pencil');
+    document.getElementById('btnSaveTxt').textContent = 'Guardar cambios';
+    document.getElementById('editProductId').value = tmplId;
+
+    // Cargar datos del producto
+    try {
+      const r = await fetch(`${API}?action=products_by_ids&ids=${tmplId}`);
+      const d = await r.json();
+      const p = (d.products || [])[0];
+      if (!p) { showModalError('No se pudo cargar el producto'); return; }
+
+      document.getElementById('prdName').value  = p.name || '';
+      document.getElementById('prdCode').value  = p.default_code || '';
+      document.getElementById('prdPrice').value = p.list_price != null ? p.list_price : '';
+
+      // Categoría
+      if (p.categ_id) {
+        const categId = Array.isArray(p.categ_id) ? p.categ_id[0] : p.categ_id;
+        document.getElementById('prdCateg').value = categId;
+      }
+
+      // Imagen
+      if (p.image_1920) {
+        showImagePreview('data:image/png;base64,' + p.image_1920);
+      }
+    } catch(e) { showModalError('Error al cargar: ' + e.message); }
+
+    document.getElementById('productModal').classList.remove('hidden');
+    document.getElementById('productModal').classList.add('flex');
+    lucide.createIcons();
+  }
+
+  function closeModal() {
+    document.getElementById('productModal').classList.add('hidden');
+    document.getElementById('productModal').classList.remove('flex');
+    resetForm();
+  }
+
+  function resetForm() {
+    document.getElementById('productForm').reset();
+    document.getElementById('editProductId').value = '';
+    document.getElementById('modalError').classList.add('hidden');
+    document.getElementById('modalSuccess').classList.add('hidden');
+    document.getElementById('imgPreview').classList.add('hidden');
+    document.getElementById('imgPlaceholder').classList.remove('hidden');
+    _imgBase64 = null;
+  }
+
+  // ── AUTO-CÓDIGO ─────────────────────────────────────────────
+  async function onCategChange() {
+    const sel = document.getElementById('prdCateg');
+    const editId = document.getElementById('editProductId').value;
+    if (!sel.value || editId) return; // en edición no auto-generar
+    await generateAutoCode();
+  }
+
+  async function generateAutoCode() {
+    const sel  = document.getElementById('prdCateg');
+    const opt  = sel.options[sel.selectedIndex];
+    if (!opt || !opt.value) {
+      showModalError('Selecciona una categoría primero');
+      return;
+    }
+    const categId    = opt.value;
+    const categName  = opt.dataset.name || opt.textContent;
+
+    const btn = document.getElementById('btnAutoCode');
+    btn.innerHTML = '<svg class="spinner w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Calculando...';
+    try {
+      const r = await fetch(`${API}?action=next_product_code&categ_id=${categId}&complete_name=${encodeURIComponent(categName)}`);
+      const d = await r.json();
+      if (d.error) { showModalError(d.error); return; }
+      document.getElementById('prdCode').value = d.code;
+      clearModalError();
+    } catch(e) {
+      showModalError('Error al generar código: ' + e.message);
+    } finally {
+      btn.innerHTML = '<i data-lucide="refresh-cw" class="w-3 h-3"></i> Auto-generar';
+      lucide.createIcons({ root: btn.parentElement });
+    }
+  }
+
+  function syncCodeFields() {
+    // referencia = barcode — siempre iguales, nada extra que hacer en UI
+  }
+
+  // ── IMAGEN ──────────────────────────────────────────────────
+  function handleImageUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const dataUrl = e.target.result;
+      _imgBase64 = dataUrl.split(',')[1]; // solo base64
+      showImagePreview(dataUrl);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function showImagePreview(dataUrl) {
+    const img = document.getElementById('imgPreview');
+    const ph  = document.getElementById('imgPlaceholder');
+    img.src   = dataUrl;
+    img.classList.remove('hidden');
+    ph.classList.add('hidden');
+  }
+
+  // ── GUARDAR ─────────────────────────────────────────────────
+  async function saveProduct() {
+    const editId = document.getElementById('editProductId').value;
+    const name   = document.getElementById('prdName').value.trim();
+    const code   = document.getElementById('prdCode').value.trim();
+    const categ  = document.getElementById('prdCateg').value;
+    const price  = document.getElementById('prdPrice').value;
+
+    // Validar campos requeridos
+    if (!name)  { showModalError('El nombre es requerido'); return; }
+    if (!code)  { showModalError('La referencia / código es requerida'); return; }
+    if (!categ) { showModalError('La categoría es requerida'); return; }
+    if (price === '' || price === null) { showModalError('El precio es requerido'); return; }
+
+    const btn = document.getElementById('btnSaveProduct');
+    btn.disabled = true;
+    btn.innerHTML = `<svg class="spinner w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+    </svg> Guardando...`;
+
+    try {
+      let payload, result;
+      if (editId) {
+        // ── EDITAR ──
+        payload = {
+          action: 'update_product',
+          id: parseInt(editId),
+          name, list_price: parseFloat(price),
+          categ_id: parseInt(categ),
+          default_code: code,
+        };
+        if (_imgBase64) payload.image_base64 = _imgBase64;
+
+        const r = await fetch(API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        result = await r.json();
+      } else {
+        // ── CREAR ──
+        payload = {
+          action: 'create_product',
+          name, default_code: code,
+          categ_id: parseInt(categ),
+          list_price: parseFloat(price),
+        };
+        if (_imgBase64) payload.image_base64 = _imgBase64;
+
+        const r = await fetch(API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        result = await r.json();
+      }
+
+      if (result.error) {
+        showModalError(result.error);
+      } else {
+        showModalSuccess(editId
+          ? `✓ Producto actualizado correctamente`
+          : `✓ Producto "${result.name}" creado con código ${result.code}`);
+        if (!editId) {
+          // limpiar para permitir crear otro
+          setTimeout(() => {
+            resetForm();
+            clearModalError();
+            clearModalSuccess();
+          }, 2500);
+        }
+        // refrescar grilla si hay resultados
+        const q = document.getElementById('searchInput').value.trim();
+        if (q || document.getElementById('categInput').value.trim()) doSearch();
+      }
+    } catch(e) {
+      showModalError('Error de red: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<i data-lucide="save" class="w-4 h-4"></i><span id="btnSaveTxt">${editId ? 'Guardar cambios' : 'Crear en Odoo'}</span>`;
+      lucide.createIcons({ root: btn });
+    }
+  }
+
+  function showModalError(msg) {
+    const el = document.getElementById('modalError');
+    el.textContent = msg;
+    el.classList.remove('hidden');
+    document.getElementById('modalSuccess').classList.add('hidden');
+  }
+  function clearModalError() { document.getElementById('modalError').classList.add('hidden'); }
+  function showModalSuccess(msg) {
+    const el = document.getElementById('modalSuccess');
+    el.textContent = msg;
+    el.classList.remove('hidden');
+    document.getElementById('modalError').classList.add('hidden');
+  }
+  function clearModalSuccess() { document.getElementById('modalSuccess').classList.add('hidden'); }
+
+  // Cerrar modal al click fuera
+  document.getElementById('productModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('productModal')) closeModal();
+  });
+</script>
+</body>
+</html>

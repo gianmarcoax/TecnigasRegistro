@@ -138,8 +138,12 @@ class Handler(SimpleHTTPRequestHandler):
                     result = self.handle_stock_by_location(params)
                 elif action == 'history_receptions':
                     result = self.handle_history_receptions(params)
+                elif action == 'history_transfers':
+                    result = self.handle_history_transfers(params)
                 elif action == 'picking_detail':
                     result = self.handle_picking_detail(params)
+                elif action == 'next_product_code':
+                    result = self.handle_next_product_code(params)
                 else:
                     result = {'error': 'Acción no reconocida'}
             except Exception as e:
@@ -166,6 +170,12 @@ class Handler(SimpleHTTPRequestHandler):
                     result = self.handle_receive(data)
                 elif action == 'transfer':
                     result = self.handle_transfer(data)
+                elif action == 'revert_picking':
+                    result = self.handle_revert_picking(data)
+                elif action == 'create_product':
+                    result = self.handle_create_product(data)
+                elif action == 'update_product':
+                    result = self.handle_update_product(data)
                 else:
                     result = {'error': 'Acción POST no reconocida'}
             except Exception as e:
@@ -383,6 +393,247 @@ class Handler(SimpleHTTPRequestHandler):
             p['line_count'] = len(p.get('move_ids_without_package', []))
 
         return {'pickings': pickings or []}
+
+    # ── History: traslados desde Odoo ────────────────────────────
+    def handle_history_transfers(self, params):
+        """
+        Devuelve los stock.picking de tipo internal (traslados internos).
+        GET /api?action=history_transfers&limit=50&state=done
+        """
+        limit  = int(params.get('limit', 60) or 60)
+        state  = params.get('state', '')
+
+        domain = [['picking_type_code', '=', 'internal']]
+        if state:
+            domain.append(['state', '=', state])
+
+        pickings = odoo_call('stock.picking', 'search_read', [domain], {
+            'fields': ['id', 'name', 'date_done', 'date', 'state',
+                       'origin', 'partner_id', 'move_ids_without_package',
+                       'location_id', 'location_dest_id'],
+            'order':  'date desc',
+            'limit':  limit,
+        })
+
+        for p in (pickings or []):
+            p['line_count'] = len(p.get('move_ids_without_package', []))
+
+        return {'pickings': pickings or []}
+
+    # ── Revert picking: cancelar o devolver ──────────────────────
+    def handle_revert_picking(self, data):
+        """
+        Cancela o revierte un picking.
+        - draft/confirmed/assigned → button_cancel
+        - done → crea un retorno via stock.return.picking
+        POST /api  { action: revert_picking, id: <int> }
+        """
+        picking_id = int(data.get('id', 0) or 0)
+        if not picking_id:
+            return {'error': 'Falta el id del picking'}
+
+        picks = odoo_call('stock.picking', 'read', [[picking_id]], {
+            'fields': ['id', 'state', 'name']
+        })
+        if not picks:
+            return {'error': 'Picking no encontrado'}
+
+        state = picks[0].get('state', '')
+        name  = picks[0].get('name', '')
+
+        if state == 'done':
+            # Crear retorno: wizard stock.return.picking
+            try:
+                ctx = odoo_call('stock.picking', 'action_open_return',
+                                [[picking_id]], {})
+                # Odoo 18: action_open_return devuelve una acción,
+                # usamos el wizard id del context si existe.
+                # Fallback: crear el wizard directamente.
+            except Exception:
+                ctx = None
+
+            try:
+                wiz_id = odoo_call('stock.return.picking', 'create',
+                                   [{'picking_id': picking_id}], {})
+                result = odoo_call('stock.return.picking', 'create_returns',
+                                   [[wiz_id]], {})
+                new_picking_id = None
+                if isinstance(result, dict) and result.get('res_id'):
+                    new_picking_id = result['res_id']
+                return {
+                    'ok': True,
+                    'action': 'returned',
+                    'name': name,
+                    'new_picking_id': new_picking_id,
+                }
+            except Exception as e:
+                return {'error': f'No se pudo crear el retorno: {e}'}
+        else:
+            # Cancelar (sólo si no está hecho)
+            try:
+                odoo_call('stock.picking', 'action_cancel', [[picking_id]], {})
+                return {'ok': True, 'action': 'cancelled', 'name': name}
+            except Exception as e:
+                return {'error': f'No se pudo cancelar: {e}'}
+
+    # ── Next product code: auto-código único global ───────────────
+    def handle_next_product_code(self, params):
+        """
+        Calcula el siguiente código de producto para una categoría.
+        Formato: [CAT3][SUBCAT3][CORR3]  ej: 003031001
+        Verifica unicidad global en product.template.
+        GET /api?action=next_product_code&categ_id=<int>&complete_name=<str>
+        """
+        categ_id      = int(params.get('categ_id', 0) or 0)
+        complete_name = params.get('complete_name', '')
+
+        if not categ_id or not complete_name:
+            return {'error': 'Faltan parámetros categ_id y complete_name'}
+
+        # Extraer partes del nombre "003 UTENSILIOS / 031 TAPERS"
+        # o "003 UTENSILIOS" si es categoría raíz
+        import re
+        parts = [p.strip() for p in complete_name.split('/')]
+        def extract_num(s):
+            m = re.match(r'^(\d+)', s.strip())
+            return m.group(1).zfill(3) if m else '000'
+
+        if len(parts) >= 2:
+            cat_num    = extract_num(parts[-2])
+            subcat_num = extract_num(parts[-1])
+        else:
+            cat_num    = extract_num(parts[0])
+            subcat_num = '000'
+
+        prefix = cat_num + subcat_num  # ej: "003031"
+
+        # Buscar todos los códigos que empiecen con ese prefijo en Odoo
+        existing = odoo_call('product.template', 'search_read',
+            [[['default_code', 'like', prefix + '%']]],
+            {'fields': ['default_code']})
+
+        max_corr = 0
+        pat = re.compile(r'^' + re.escape(prefix) + r'(\d{3})$')
+        for prod in (existing or []):
+            code = prod.get('default_code') or ''
+            m = pat.match(code)
+            if m:
+                n = int(m.group(1))
+                if n > max_corr:
+                    max_corr = n
+
+        # Buscar el siguiente que no exista globalmente
+        candidate = max_corr + 1
+        all_codes = {(p.get('default_code') or '').strip()
+                     for p in (existing or [])}
+        while candidate <= 999:
+            proposed = prefix + str(candidate).zfill(3)
+            if proposed not in all_codes:
+                break
+            candidate += 1
+
+        if candidate > 999:
+            return {'error': 'No hay más códigos disponibles para esta categoría'}
+
+        return {
+            'code': prefix + str(candidate).zfill(3),
+            'prefix': prefix,
+            'next_corr': candidate,
+        }
+
+    # ── Create product ────────────────────────────────────────────
+    def handle_create_product(self, data):
+        """
+        Crea un product.template en Odoo con los valores recibidos.
+        POST { action, name, default_code, categ_id, list_price, image_base64? }
+        """
+        name         = (data.get('name') or '').strip()
+        default_code = (data.get('default_code') or '').strip()
+        categ_id     = int(data.get('categ_id', 0) or 0)
+        list_price   = float(data.get('list_price', 0) or 0)
+        image_b64    = data.get('image_base64') or None
+
+        if not name:
+            return {'error': 'El nombre del producto es requerido'}
+        if not default_code:
+            return {'error': 'La referencia/código es requerida'}
+        if not categ_id:
+            return {'error': 'La categoría es requerida'}
+
+        # Verificar unicidad global del código
+        dupes = odoo_call('product.template', 'search_read',
+            [[['default_code', '=', default_code]]],
+            {'fields': ['id', 'name'], 'limit': 1})
+        if dupes:
+            return {'error': f"El código '{default_code}' ya existe: {dupes[0].get('name','')}"}
+
+        # Verificar unicidad del barcode
+        dupes_bc = odoo_call('product.template', 'search_read',
+            [[['barcode', '=', default_code]]],
+            {'fields': ['id', 'name'], 'limit': 1})
+        if dupes_bc:
+            return {'error': f"El código de barras '{default_code}' ya existe: {dupes_bc[0].get('name','')}"}
+
+        vals = {
+            'name':          name,
+            'default_code':  default_code,
+            'barcode':       default_code,
+            'categ_id':      categ_id,
+            'list_price':    list_price,
+            'type':          'product',   # Bienes (storable)
+            'tracking':      'none',
+            'sale_ok':       True,
+            'purchase_ok':   True,
+            'available_in_pos': True,
+        }
+        if image_b64:
+            vals['image_1920'] = image_b64
+
+        try:
+            new_id = odoo_call('product.template', 'create', [vals], {})
+            return {'ok': True, 'id': new_id, 'name': name, 'code': default_code}
+        except Exception as e:
+            return {'error': str(e)}
+
+    # ── Update product ────────────────────────────────────────────
+    def handle_update_product(self, data):
+        """
+        Actualiza campos de un product.template existente.
+        POST { action, id, name?, list_price?, categ_id?, image_base64? }
+        Referencia y barcode siempre se sincronizan entre sí.
+        """
+        tmpl_id = int(data.get('id', 0) or 0)
+        if not tmpl_id:
+            return {'error': 'Falta el id del producto'}
+
+        vals = {}
+        if 'name'        in data: vals['name']        = data['name']
+        if 'list_price'  in data: vals['list_price']  = float(data['list_price'])
+        if 'categ_id'    in data: vals['categ_id']    = int(data['categ_id'])
+        if 'image_base64' in data and data['image_base64']:
+            vals['image_1920'] = data['image_base64']
+
+        if 'default_code' in data:
+            new_code = (data['default_code'] or '').strip()
+            if new_code:
+                # Verificar unicidad excluyendo el propio producto
+                dupes = odoo_call('product.template', 'search_read',
+                    [[['default_code', '=', new_code],
+                      ['id', '!=', tmpl_id]]],
+                    {'fields': ['id'], 'limit': 1})
+                if dupes:
+                    return {'error': f"El código '{new_code}' ya está en uso por otro producto"}
+                vals['default_code'] = new_code
+                vals['barcode']      = new_code  # siempre sincronizados
+
+        if not vals:
+            return {'ok': True, 'message': 'Sin cambios'}
+
+        try:
+            odoo_call('product.template', 'write', [[tmpl_id], vals], {})
+            return {'ok': True, 'id': tmpl_id}
+        except Exception as e:
+            return {'error': str(e)}
 
     # ── Picking detail: líneas de movimiento ──────────────────────
     def handle_picking_detail(self, params):

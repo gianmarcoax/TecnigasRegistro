@@ -287,6 +287,10 @@
       <p id="detailFooterInfo" class="text-xs text-gray-500"></p>
       <div class="flex gap-3">
         <button id="detailClose2" class="px-4 py-2 rounded-xl text-sm font-bold text-gray-600 hover:bg-borde btn-trans">Cerrar</button>
+        <button id="btnRevertRecepcion" onclick="revertCurrentPicking()"
+          class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white bg-red-600 hover:bg-red-700 shadow-card btn-trans hidden">
+          <i data-lucide="undo-2" class="w-4 h-4"></i> <span id="revertRecepTxt">Revertir</span>
+        </button>
         <button id="btnDetailExport" class="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold text-white bg-green-600 hover:bg-green-700 shadow-card btn-trans">
           <i data-lucide="download" class="w-4 h-4"></i> Exportar Excel
         </button>
@@ -424,9 +428,10 @@ async function loadLocations() {
       
       if (savedLoc && loc.id == savedLoc) {
         opt.selected = true; mopt.selected = true;
-      } else if (!savedLoc && (loc.complete_name||'').toUpperCase().includes('ALMACEN')) {
-        opt.selected = true; mopt.selected = true;
+      }
+      if ((loc.complete_name||'').toUpperCase().includes('ALMACEN')) {
         _locAlmId = loc.id;
+        if (!savedLoc) { opt.selected = true; mopt.selected = true; }
       }
       if ((loc.complete_name||'').toUpperCase().includes('TIENDA')) _locTieId = loc.id;
       
@@ -518,6 +523,10 @@ function renderGrid(products) {
     return `
     <div class="bg-superficie rounded-xl border border-borde shadow-card hover:shadow-elevada hover:-translate-y-1 overflow-hidden flex flex-col cursor-pointer btn-trans animar-entrada relative" onclick="openReceiveModal(${p.id})" id="card-${p.id}">
       ${isKit ? `<div class="absolute top-2 left-2 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 text-[10px] font-black uppercase px-2 py-1 rounded-lg border border-purple-200 dark:border-purple-800 shadow-sm flex items-center gap-1"><i data-lucide="blocks" class="w-3 h-3"></i> KIT</div>` : ''}
+      <a href="productos.html?edit=${p.id}" onclick="event.stopPropagation()" title="Editar producto"
+        class="absolute top-2 right-2 z-10 bg-slate-700/80 hover:bg-primario text-gray-300 hover:text-white p-1.5 rounded-lg btn-trans shadow">
+        <i data-lucide="pencil" class="w-3 h-3"></i>
+      </a>
       <div class="h-32 bg-white dark:bg-slate-800 p-2 flex items-center justify-center relative">
         <div class="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/5 to-transparent pointer-events-none"></div>
         ${img}
@@ -525,7 +534,7 @@ function renderGrid(products) {
       <div class="p-3 flex-1 flex flex-col">
         <div class="text-[10px] font-black text-primario tracking-widest uppercase mb-1">${code}</div>
         <div class="text-xs font-bold text-texto leading-snug flex-1">${esc(p.name)}</div>
-        <div class="flex gap-2 mt-2" class="prod-stock-row">
+        <div class="prod-stock-row flex gap-2 mt-2">
           <span class="stock-chip alm flex items-center gap-1 text-[10px] font-bold bg-cyan-50 dark:bg-cyan-900/20 text-cyan-700 dark:text-cyan-300 px-1.5 py-0.5 rounded-md border border-cyan-100 dark:border-cyan-800"><i data-lucide="warehouse" class="w-3 h-3"></i> ${almQty}</span>
           <span class="stock-chip tie flex items-center gap-1 text-[10px] font-bold bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded-md border border-indigo-100 dark:border-indigo-800"><i data-lucide="store" class="w-3 h-3"></i> ${tieQty}</span>
         </div>
@@ -996,6 +1005,19 @@ async function openPickingDetail(pickingId) {
     _detailLines = (d.lines || []).map((l, i) => ({ ...l, _idx: i }));
     _detailPickInfo = p;
 
+    // Mostrar/ocultar botón Revertir según estado
+    const btnRev = document.getElementById('btnRevertRecepcion');
+    const revTxt = document.getElementById('revertRecepTxt');
+    if (p.state === 'done') {
+      btnRev.classList.remove('hidden');
+      revTxt.textContent = 'Crear retorno';
+    } else if (['draft','confirmed','assigned'].includes(p.state)) {
+      btnRev.classList.remove('hidden');
+      revTxt.textContent = 'Cancelar';
+    } else {
+      btnRev.classList.add('hidden');
+    }
+
     document.getElementById('detailTitle').textContent = p.name || 'Detalle';
     const destName = Array.isArray(p.location_dest_id) ? p.location_dest_id[1] : '';
     document.getElementById('detailMeta').textContent = `${fmtDate(p.date_done || p.date)}  ·  Destino: ${destName}`;
@@ -1128,6 +1150,45 @@ document.addEventListener('keydown', e => {
   closeOverlay('detailOverlay', 'detailPanel');
   closeOverlay('historyOverlay', 'historyPanel');
 });
+
+// ── REVERTIR RECEPCIÓN ───────────────────────────────────────────
+async function revertCurrentPicking() {
+  if (!_detailPickInfo) return;
+  const state = _detailPickInfo.state;
+  const label = state === 'done' ? 'crear un retorno' : 'cancelar esta recepción';
+  if (!confirm(`¿Confirmas ${label}? Esta acción no se puede deshacer fácilmente.`)) return;
+
+  const btn = document.getElementById('btnRevertRecepcion');
+  btn.disabled = true;
+  btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Procesando...`;
+  lucide.createIcons({ root: btn });
+
+  try {
+    const r = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'revert_picking', id: _detailPickInfo.id }),
+    });
+    const d = await r.json();
+    if (d.error) {
+      toast(d.error, 'error', 'alert-circle');
+    } else {
+      const msg = d.action === 'returned'
+        ? `Retorno creado para ${d.name}`
+        : `Recepción ${d.name} cancelada`;
+      toast(msg, 'success', 'check-circle');
+      closeOverlay('detailOverlay', 'detailPanel');
+      loadHistory();
+    }
+  } catch(e) {
+    toast('Error: ' + e.message, 'error', 'alert-circle');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<i data-lucide="undo-2" class="w-4 h-4"></i><span id="revertRecepTxt">Revertir</span>`;
+    lucide.createIcons({ root: btn });
+  }
+}
+
 </script>
 </body>
 </html>
