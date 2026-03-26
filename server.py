@@ -84,12 +84,19 @@ def build_excel_bytes(rows):
     thin = Side(style='thin', color='CBD5E1')
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
     for row_idx, row in enumerate(rows, 2):
-        ws.cell(row=row_idx, column=1, value=row.get('tickets', 1)).border = border
-        ws.cell(row=row_idx, column=2, value=row.get('name', '')).border = border
-        ws.cell(row=row_idx, column=3, value=row.get('list_price', 0)).border = border
-        ws.cell(row=row_idx, column=4, value=row.get('default_code', '')).border = border
-        for col_idx in range(1, 5):
-            ws.cell(row=row_idx, column=col_idx).border = border
+        # Columna 4: Referencia interna / barcode — PRIMERO, para que el border
+        # no sobreescriba el quotePrefix al llamar ws.cell() de nuevo.
+        code_val = str(row.get('default_code', '') or '')
+        c4 = ws.cell(row=row_idx, column=4, value=code_val)
+        c4.number_format = '@'   # formato texto — BarTender lo lee correctamente
+        c4.border = border
+
+        c1 = ws.cell(row=row_idx, column=1, value=row.get('tickets', 1))
+        c1.border = border
+        c2 = ws.cell(row=row_idx, column=2, value=row.get('name', ''))
+        c2.border = border
+        c3 = ws.cell(row=row_idx, column=3, value=row.get('list_price', 0))
+        c3.border = border
 
     # Ajustar ancho de columnas
     col_widths = [20, 45, 18, 20]
