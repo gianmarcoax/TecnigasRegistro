@@ -328,6 +328,14 @@
     document.getElementById('productModal').classList.remove('hidden');
     document.getElementById('productModal').classList.add('flex');
     lucide.createIcons();
+
+    // Si hay una categoría activa en la búsqueda, pre-seleccionarla y generar código
+    const catName = document.getElementById('categInput').value.trim();
+    if (catName && _catMap[catName]) {
+      const catObj = _catMap[catName];
+      document.getElementById('prdCateg').value = catObj.id;
+      generateAutoCode(); // auto-código basado en esa categoría
+    }
   }
 
   // ── ABRIR MODAL EDITAR ──────────────────────────────────────
