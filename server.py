@@ -86,9 +86,11 @@ def build_excel_bytes(rows):
     for row_idx, row in enumerate(rows, 2):
         # Columna 4: Referencia interna / barcode — PRIMERO, para que el border
         # no sobreescriba el quotePrefix al llamar ws.cell() de nuevo.
-        code_val = str(row.get('default_code', '') or '')
+        code_val = str(row.get('default_code', '') or '').strip()
         c4 = ws.cell(row=row_idx, column=4, value=code_val)
-        c4.number_format = '@'   # formato texto — BarTender lo lee correctamente
+        c4.data_type = 's'       # Forzar que sea string
+        c4.number_format = '@'   # Formato texto visible
+        c4.quotePrefix = True    # Previene que Excel elimine los ceros a la izquierda
         c4.border = border
 
         c1 = ws.cell(row=row_idx, column=1, value=row.get('tickets', 1))
